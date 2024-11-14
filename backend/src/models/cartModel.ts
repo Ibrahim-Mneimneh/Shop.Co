@@ -1,16 +1,14 @@
 import mongoose, {Document, Schema} from "mongoose"
 
+import { IProductRef } from "../types/modalTypes";
+
 export interface ICart extends Document {
     user:mongoose.Schema.Types.ObjectId,
     products:IProductRef[],
     totalPrice: Schema.Types.Decimal128
     updatePrice(): Promise<void>;
 }
-export interface IProductRef {
-    productId: mongoose.Schema.Types.ObjectId;  
-    quantity: number;
-    price:Schema.Types.Decimal128            
-}
+
 
 const cartSchema = new Schema<ICart>({
     
