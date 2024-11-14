@@ -23,8 +23,12 @@ const cartSchema = new Schema<ICart>({
     totalPrice:{type:Schema.Types.Decimal128,default: 0}
 });
 
+
 cartSchema.methods.updatePrice = async function (): Promise<void> {
     let total = 0;
+
+    //Add a discount option for a special customer and Include a type for Product 
+    
 
     for (let product of this.products) {
         const productData = await mongoose.model('Product').findById(product.productId);
@@ -45,8 +49,5 @@ cartSchema.pre("save",async function(next){
         next(error)
     }
 })
-
-
-
 
 export const CartModel =mongoose.model<ICart>("Cart",cartSchema);
