@@ -16,6 +16,6 @@ const userSchema = new Schema<IOrder>({
     }],
     totalPrice:{type:Schema.Types.Decimal128,required:true},
     orderStatus:{type:String,default:"Pending",enum:["Pending","In-delivery","Delivered"]}
-});
+},{timestamps:true});
 
 export const UserModel =mongoose.model<IOrder>("Order",userSchema);
