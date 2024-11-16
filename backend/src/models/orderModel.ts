@@ -18,4 +18,4 @@ const userSchema = new Schema<IOrder>({
     orderStatus:{type:String,default:"Pending",enum:["Pending","In-delivery","Delivered"]}
 },{timestamps:true});
 
-export const UserModel =mongoose.model<IOrder>("Order",userSchema);
+export const OrderModel =mongoose.model<IOrder>("Order",userSchema);
