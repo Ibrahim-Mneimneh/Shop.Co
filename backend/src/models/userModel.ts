@@ -1,5 +1,5 @@
 import mongoose, {Document, Schema} from "mongoose"
-
+import bcrypt from "bcryptjs"
 export interface IUser extends Document {
     name: string,
     password: string,
@@ -20,7 +20,6 @@ const userSchema = new Schema<IUser>({
       default: "user",
       enum: ["admin", "user"],
     },
-    createdAt:{type:Date, required:true},
     passwordChangedAt:{type:Date, required:true},
     address:{type:String,required:true},
     orders:[{
@@ -28,5 +27,21 @@ const userSchema = new Schema<IUser>({
     }],
     cart:{type: mongoose.Schema.Types.ObjectId, ref: 'Cart',required:true}
 });
+
+// Exclude password from responses
+userSchema.set("toJSON",{transform:(doc,ret)=>{
+    delete ret.password
+    return ret
+}});
+
+userSchema.methods.comparePasswords=async function(candidatePassword:string){
+    return await bcrypt.compare(candidatePassword,this.password)
+}
+
+
+// findbyId
+
+// findbyEmail
+
 
 export const UserModel =mongoose.model<IUser>("User",userSchema);
