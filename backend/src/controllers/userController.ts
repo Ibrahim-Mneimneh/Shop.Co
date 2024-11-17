@@ -3,6 +3,7 @@ import { Request,Response,RequestHandler } from "express";
 import Joi from "joi"
 import bcrypt from "bcryptjs"
 import { UserModel } from "../models/userModel";
+import { emailVerification } from "./verificationController";
 export interface IRegister{
     email:string,
     password:string,
@@ -49,6 +50,7 @@ export const registerUser = async (req: Request, res: Response)=>{
     // If the data is invalid
     if (error) {
       res.status(400).json({ message: 'Validation failed', errors: error.details });
+      return
     }
     // Reformat data 
     let data = {
@@ -63,6 +65,7 @@ export const registerUser = async (req: Request, res: Response)=>{
         const usedEmail = await UserModel.findOne({ email:data.email });
         if(usedEmail){
             res.status(400).json({message:"Email already in use"});
+            return
         }
         // Hash password
         const salt = await bcrypt.genSalt(10);
@@ -71,6 +74,8 @@ export const registerUser = async (req: Request, res: Response)=>{
         
         const userData = await UserModel.create(data) 
 
+        // Send email verification
+        emailVerification(value.email,value.firstname)
     // send the data back with the token 
     res.status(201).json({message:"User registered Successfully"})
 
@@ -80,3 +85,4 @@ export const registerUser = async (req: Request, res: Response)=>{
     }
     
 }
+

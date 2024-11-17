@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .email-header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333333;
+            margin-bottom: 10px;
+        }
+
+        .email-body {
+            font-size: 16px;
+            color: #555555;
+            margin: 20px 0;
+        }
+
+        .verify-button {
+            display: inline-block;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+            background-color: #4caf50;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .verify-button:hover {
+            background-color: #45a049;
+        }
+
+        .email-footer {
+            font-size: 14px;
+            color: #999999;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="email-container">
+        <h1 class="email-header">Welcome, {{firstname}}!</h1>
+        <p class="email-body">
+            Thank you for registering with us. To complete your registration, please verify your email address by
+            clicking the button below:
+        </p>
+        <a href="{{verificationUrl}}" class="verify-button">Verify Email</a>
+        <p class="email-body">
+            This link will be valid for <strong>15 minutes</strong>. If you did not create this account, you can safely
+            ignore this email.
+        </p>
+        <div class="email-footer">
+            &copy;  Shop.co 
+        </div>
+    </div>
+</body>
+
+</html>
