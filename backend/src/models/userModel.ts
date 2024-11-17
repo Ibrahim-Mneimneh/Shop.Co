@@ -7,9 +7,11 @@ export interface IUser extends Document {
     createdAt:Date,
     passwordChangedAt:Date,
     address:string,
+    isVerified:boolean
     role:string,
     cart:mongoose.Schema.Types.ObjectId,
     orders:mongoose.Schema.Types.ObjectId[]
+
 }
 
 const userSchema = new Schema<IUser>({
@@ -21,7 +23,9 @@ const userSchema = new Schema<IUser>({
       enum: ["admin", "user"],
     },
     passwordChangedAt:{type:Date, required:true},
-    address:{type:String,required:true},
+    isVerified:{type:Boolean,default:false},
+    address:{type:String,
+    required:true},
     orders:[{
         type: mongoose.Schema.Types.ObjectId, ref: 'Order'
     }],
