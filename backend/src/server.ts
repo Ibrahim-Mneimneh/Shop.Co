@@ -11,7 +11,7 @@ app.use(express.urlencoded({ limit: "50mb" }));
 
 
 // Routes
-app.use("/api/v1/user", userRouter);
+app.use("/api/"+process.env.VERSION+"/user", userRouter);
 
 // Error handling middleware
 app.use((err: any, req: Request, res: Response, next: Function) => {
@@ -20,5 +20,7 @@ app.use((err: any, req: Request, res: Response, next: Function) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}`);
+  console.log(`Server is running at http://${process.env.HOST}:${PORT}`);
 });
+
+export default app
