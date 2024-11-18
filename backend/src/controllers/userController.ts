@@ -4,6 +4,7 @@ import Joi from "joi"
 import bcrypt from "bcryptjs"
 import { UserModel } from "../models/userModel";
 import { emailVerification } from "./verificationController";
+import { CartModel } from "../models/cartModel";
 export interface IRegister{
     email:string,
     password:string,
@@ -55,7 +56,7 @@ export const registerUser = async (req: Request, res: Response)=>{
     // Reformat data 
     let data = {
       name: value.firstname + ' ' + value.lastname, 
-      address: `${value.country}, ${value.postalCode}, ${value.bldngNum}`,
+      address: `${value.country},${value.postalCode},${value.bldngNum}`,
       email: value.email,
       password: value.password,
     };
@@ -76,6 +77,10 @@ export const registerUser = async (req: Request, res: Response)=>{
 
         // Send email verification
         emailVerification(value.email,value.firstname)
+
+        // Create a cart for this user
+        await CartModel.create({user:userData._id})
+
     // send the data back with the token 
     res.status(201).json({message:"User registered Successfully"})
 

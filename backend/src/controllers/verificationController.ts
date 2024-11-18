@@ -9,10 +9,10 @@ import jwt from 'jsonwebtoken';
 export const emailVerification = async (recipientEmail:string,firstname:string,subject:string="Email Verification") => {
   try {
     const transporter = nodemailer.createTransport({
-      service: process.env.centralService,
+      service: process.env.CENTRAL_SERVICE,
       auth: {
-        user: process.env.centralName,
-        pass: process.env.centralPass,
+        user: process.env.CENTRAL_NAME,
+        pass: process.env.CENTRAL_PASS,
       },
     });
     const templatePath = path.join(__dirname, "verifyEmail.hbs");
@@ -23,10 +23,10 @@ export const emailVerification = async (recipientEmail:string,firstname:string,s
     const token =generateEmailToken(recipientEmail,)
     const verificationUrl = `http://${process.env.HOST}:${process.env.PORT}/api/${process.env.VERSION}/auth/verify/${token}`;
     const mailOptions = {
-      from: process.env.centralName,
+      from: process.env.CENTRAL_NAME,
       to: recipientEmail,
       subject,
-      html: template({ subject, firstname}),
+      html: template({ subject, firstname,verificationUrl}),
     };
     transporter.sendMail(mailOptions, function (error, info) {
       if (error) {

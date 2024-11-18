@@ -48,8 +48,27 @@
             margin: 20px 0;
         }
 
+        /* Ensure the link inside the button does not change color */
+        .verify-button a {
+            color: #ffffff;
+            /* Ensure the link inside the button is white */
+            text-decoration: none;
+            /* Remove underline */
+        }
+
         .verify-button:hover {
             background-color: #45a049;
+            color: white;
+        }
+
+        /* Ensure the link inside the button stays white even on hover */
+        .verify-button a:hover {
+            color: white;
+        }
+
+        a {
+            color: white;
+            text-decoration: none;
         }
 
         .email-footer {
@@ -62,18 +81,19 @@
 
 <body>
     <div class="email-container">
-        <h1 class="email-header">Welcome, {{firstname}}!</h1>
+        <h1 class="email-header">Welcome {{firstname}}!</h1>
         <p class="email-body">
             Thank you for registering with us. To complete your registration, please verify your email address by
             clicking the button below:
         </p>
-        <a href="{{verificationUrl}}" class="verify-button">Verify Email</a>
+        <button class="verify-button"><a href="{{verificationUrl}}">Verify Email</a></button>
+
         <p class="email-body">
             This link will be valid for <strong>15 minutes</strong>. If you did not create this account, you can safely
             ignore this email.
         </p>
         <div class="email-footer">
-            &copy;  Shop.co 
+            Shop.co - Ibrahim Mneimneh's Project
         </div>
     </div>
 </body>
