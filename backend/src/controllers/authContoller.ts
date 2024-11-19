@@ -1,7 +1,18 @@
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 import { UserModel } from "../models/userModel";
+import { Schema } from "mongoose";
 
+
+// Generate JWT function
+export const jwtGenerator = (userId:Schema.Types.ObjectId,passwordUpdatedAt:string,cartId:Schema.Types.ObjectId):string=>{
+  const token:string = jwt.sign({userId,passwordUpdatedAt, cartId }, process.env.JWT_SECRET as string, {expiresIn:"1d"});
+  return token
+}
+
+
+
+// Verify email route 
 export const verifyEmailAuth = async (req: Request, res: Response) => {
   const { token } = req.params;
   

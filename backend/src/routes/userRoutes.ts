@@ -1,12 +1,12 @@
-import express, { Request, Response, Router } from 'express';
-import { registerUser } from '../controllers/userController';
+import express, { Router } from 'express';
+import { loginUser, registerUser } from '../controllers/userController';
 
 const router: Router = express.Router();
 
 // Register 
 router.post("/register",registerUser);
 // Login
-router.post("/login")
+router.post("/login",loginUser)
 
 // Get profile
 

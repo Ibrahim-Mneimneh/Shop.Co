@@ -1,10 +1,15 @@
-
 import { Request,Response,RequestHandler } from "express";
 import Joi from "joi"
 import bcrypt from "bcryptjs"
+
+
 import { UserModel } from "../models/userModel";
 import { emailVerification } from "./verificationController";
 import { CartModel } from "../models/cartModel";
+import { jwtGenerator } from "./authContoller";
+
+
+import { Schema } from "mongoose";
 export interface IRegister{
     email:string,
     password:string,
@@ -14,6 +19,11 @@ export interface IRegister{
     postalCode:number,
     bldngNum:number
 }
+export interface ILogin{
+    email:string,
+    password:string,
+}
+
 const registerSchema = Joi.object<IRegister>({
   email: Joi.string().email().required().messages({
     'string.email': 'Please provide a valid email address',
@@ -43,6 +53,16 @@ const registerSchema = Joi.object<IRegister>({
     'any.required': 'Building number is required',
   }),
 });
+const loginSchema= Joi.object<ILogin>({
+  email: Joi.string().email().required().messages({
+    'string.email': 'Please provide a valid email address',
+    'any.required': 'Email is required',
+  }),
+  password: Joi.string().min(8).required().messages({
+    'string.min': 'Password must be at least 8 characters long',
+    'any.required': 'Password is required',
+  }),
+})
 
 export const registerUser = async (req: Request, res: Response)=>{
     try{
@@ -89,5 +109,39 @@ export const registerUser = async (req: Request, res: Response)=>{
         res.status(500).json({message:"Server Error"})
     }
     
+}
+
+
+export const loginUser = async (req:Request,res:Response)=>{
+  try{
+    // I need to require the data from the user 
+    const { error, value } = loginSchema.validate(req.body);
+    if(error){
+      res.status(400).json({ message: 'Validation failed', errors: error.details });
+        return
+    } 
+
+    // check if the user is available 
+    const userData = await UserModel.findOne({email:value.email})
+    if(!userData){
+      res.status(404).json({ message: "User not found"});
+        return
+    }
+    // get password unhash it and check if the password is true 
+    const match = await bcrypt.compare(value.password,userData.password)
+
+    if(!match){
+      res.status(400).json({ message: "Incorrect email/password"});
+        return
+    }
+    // generate the user token (JWT)
+    const token:string =jwtGenerator(userData._id as Schema.Types.ObjectId,userData.passwordChangedAt? userData.passwordChangedAt.toISOString():"",userData.cart as  Schema.Types.ObjectId )
+
+    res.status(200).json({message:"Login successful",data:userData,token}) 
+  }catch(error){
+    console.log(error)
+    res.status(500).json({message:"Server Error"})
+}
+
 }
 
