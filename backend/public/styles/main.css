@@ -1,0 +1,183 @@
+/* Importing modern fonts (Roboto or Poppins) */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap");
+
+/* Reset default styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body styling */
+body {
+  font-family: "Poppins", sans-serif; /* Updated font */
+  background-image: url("/images/bg.jpg"); /* Set background image */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #333;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative; /* Positioning for overlay */
+}
+
+body::before {
+  /* Adding a grey overlay filter */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(28, 28, 28, 0.6); /* Light grey filter */
+  z-index: -1; /* Behind all other content */
+}
+
+/* Header styling */
+.header {
+  padding: 0;
+  background-color: transparent;
+  box-shadow: none;
+  z-index: 1000;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 0; /* Remove height */
+}
+
+/* Main content area */
+.main-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 100px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Status message card - Updated design */
+.status-message {
+  background: linear-gradient(
+    145deg,
+    #ffffff,
+    #f2f2f2
+  ); /* Soft gradient background */
+  padding: 80px 120px; /* Increased padding for a larger card */
+  border-radius: 20px; /* More rounded corners */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); /* Deeper shadow */
+  max-width: 1000px; /* Further increased card width */
+  width: 100%;
+  text-align: center;
+  border: 1px solid #ddd;
+  transition: box-shadow 0.3s ease;
+}
+
+/* Remove hover effect that causes movement */
+.status-message:hover {
+  transform: none; /* No movement on hover */
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); /* Deeper shadow on hover */
+}
+
+/* Heading and text styling inside the status message */
+.status-message h1 {
+  font-size: 45px; /* Larger font size for heading */
+  margin-bottom: 30px;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: 1.2px; /* Slightly increased letter spacing */
+  text-transform: capitalize; /* Capitalize the first letter of each word */
+}
+
+.status-message p {
+  font-size: 32px;
+  margin-bottom: 30px;
+  color: #555;
+}
+
+/* Description text, shown conditionally */
+.description {
+  font-size: 20px;
+  color: #777;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+/* Button styling */
+.status-message a.cta-button {
+  display: inline-block;
+  background-color: #4caf50; /* Fresh green background */
+  color: #fff;
+  text-decoration: none;
+  padding: 20px 48px; /* Larger button */
+  border-radius: 25px; /* Rounded button */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Soft shadow */
+}
+
+.status-message a.cta-button:hover {
+  background-color: #45a049; /* Darker green on hover */
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15); /* Increased shadow on hover */
+}
+
+/* Success and error styles */
+.success {
+  border-left: 5px solid #28a745;
+  background-color: #e8f7e7;
+}
+
+.error {
+  border-left: 5px solid #ff162e;
+  background-color: #f8d7da;
+}
+
+/* Footer styling - New design */
+.footer {
+  background-color: #4caf50; /* Matching footer color to card */
+  color: #fff;
+  text-align: center;
+  padding: 25px 20px; /* Larger padding */
+  font-size: 18px; /* Increased font size for better readability */
+  margin-top: auto;
+  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.footer p {
+  margin: 0;
+  font-weight: 600; /* Same font weight as card heading */
+  letter-spacing: 1px; /* Letter spacing for consistency */
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  body {
+    padding-top: 120px; /* Extra space for smaller screens */
+  }
+
+  .status-message {
+    padding: 40px 60px; /* Adjust padding for smaller screens */
+  }
+
+  .status-message h1 {
+    font-size: 32px; /* Adjust heading size */
+  }
+
+  .status-message p {
+    font-size: 20px; /* Adjust body text size */
+  }
+
+  .footer {
+    padding: 25px 20px; /* Adjust footer padding */
+  }
+
+  .main-content {
+    padding: 50px 20px;
+  }
+}

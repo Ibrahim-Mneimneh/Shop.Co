@@ -1,14 +1,42 @@
 {
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
+    "cli-color": "^2.0.4",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "mongodb": "^6.10.0"
+    "express-handlebars": "^8.0.1",
+    "fs": "^0.0.1-security",
+    "handlebars": "^4.7.8",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.10.0",
+    "mongoose": "^8.8.1",
+    "nodemailer": "^6.9.16",
+    "nodemon": "^3.1.7",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/chai": "^5.0.1",
+    "@types/cli-color": "^2.0.6",
     "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/mocha": "^10.0.9",
+    "@types/mongoose": "^5.11.97",
     "@types/node": "^22.9.0",
+    "@types/nodemailer": "^6.4.16",
+    "@types/nodemailer-express-handlebars": "^4.0.5",
+    "@types/supertest": "^6.0.2",
+    "chai": "^5.1.2",
+    "mocha": "^10.8.2",
+    "supertest": "^7.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
+  },
+  "scripts": {
+    "start": "node ./dist/server.js",
+    "dev": "nodemon"
   }
 }

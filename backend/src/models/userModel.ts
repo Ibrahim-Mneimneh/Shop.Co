@@ -22,14 +22,14 @@ const userSchema = new Schema<IUser>({
       default: "user",
       enum: ["admin", "user"],
     },
-    passwordChangedAt:{type:Date, required:true},
+    passwordChangedAt:{type:Date}, // Update for later 
     isVerified:{type:Boolean,default:false},
     address:{type:String,
     required:true},
     orders:[{
         type: mongoose.Schema.Types.ObjectId, ref: 'Order'
     }],
-    cart:{type: mongoose.Schema.Types.ObjectId, ref: 'Cart',required:true}
+    cart:{type: mongoose.Schema.Types.ObjectId, ref: 'Cart'}
 });
 
 // Exclude password from responses
@@ -46,6 +46,9 @@ userSchema.methods.comparePasswords=async function(candidatePassword:string){
 // findbyId
 
 // findbyEmail
+
+//delete cart if the user is deleted 
+
 
 
 export const UserModel =mongoose.model<IUser>("User",userSchema);
