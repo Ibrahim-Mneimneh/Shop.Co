@@ -32,9 +32,12 @@ const userSchema = new Schema<IUser>({
     cart:{type: mongoose.Schema.Types.ObjectId, ref: 'Cart'}
 });
 
-// Exclude password from responses
+// Exclude password, passwordChagedAt, role, _id  from responses
 userSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.password
+    delete ret.passwordChangedAt
+    delete ret.role
+    delete ret._id
     return ret
 }});
 
