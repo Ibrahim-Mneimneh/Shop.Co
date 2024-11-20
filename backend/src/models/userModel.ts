@@ -32,12 +32,14 @@ const userSchema = new Schema<IUser>({
     cart:{type: mongoose.Schema.Types.ObjectId, ref: 'Cart'}
 });
 
-// Exclude password, passwordChagedAt, role, _id  from responses
+// Exclude password, passwordChagedAt, role, _id, cart, orders from responses
 userSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.password
     delete ret.passwordChangedAt
     delete ret.role
     delete ret._id
+    delete ret.cart
+    delete ret.orders
     return ret
 }});
 

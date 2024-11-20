@@ -1,14 +1,15 @@
 import mongoose, {Document, Schema} from "mongoose"
 import { decimal128ToNumber, numberToDecimal128 } from "../types/modalTypes";
 
-export interface ISize {
+export interface IQuantity {
   size: string;
   quantityLeft: number;
 }
 
 export interface IProductVariant extends Document {
-  color: string;
-  sizes:ISize[],
+  color:string,
+  details:{ 
+  quantity:IQuantity[],
   images: String[];
   originalPrice: Schema.Types.Decimal128;
   isOnSale: boolean;
@@ -16,7 +17,8 @@ export interface IProductVariant extends Document {
     startDate: Schema.Types.Date;
     endDate: Schema.Types.Date;
     discountPercentage: number;
-  };
+    }
+  }
 }
 
 export interface IProduct extends Document {
@@ -39,11 +41,11 @@ const productSchema = new Schema<IProduct>({
     name:{type:String,required:true},
     description:{type:String, maxlength:600},
     gender:{type:String,enum:["Male","Female","Unisex"],required:true},
-    category:{type:String,enum:["Jackets","Pullover","Shoes","Suits","Pants","T-Shirts","Accessories"],required:true},
+    category:{type:String,enum:["Jackets","Pullover","Suits","Pants","T-Shirts","Accessories"],required:true},
     rating:{type:Number,default:0.0,min:0.0,max:5.0},
-    variants:[{ color:{type:String,required:true},
-                sizes: [{
-                    size: {type: String, required: true, enum: ["XS", "S", "M", "L", "XL", "XXL"]},
+    variants:[{ color:{type:String,required:true},details:{
+                quantity: [{
+                    size: {type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]},
                     quantityLeft: { type: Number, required: true, default: 0, min:[0,"Quantity cannot be negative"]}}],
                 images: {
                     type: [{ type: String }],
@@ -63,17 +65,16 @@ const productSchema = new Schema<IProduct>({
                     endDate: { type: Schema.Types.Date, required: true },
                     discountPercentage: { type: Number, min: 1, max: 99 }},
                     validate: {validator: function (this: IProductVariant) {
-                        if (this.isOnSale) {
-                            return (this.saleOptions && this.saleOptions.endDate > this.saleOptions.startDate);
+                        if (this.details.isOnSale) {
+                            return (this.details.saleOptions && this.details.saleOptions.endDate > this.details.saleOptions.startDate);
                         }
-                        return !this.saleOptions;
+                        return !this.details.saleOptions;
                         },
                         message: "saleOptions must have valid dates when isOnSale is true.",
                         },
                 }
-            }],
+            }}],
 },{timestamps:true,versionKey: false});
-
 
 
 // Indexing
