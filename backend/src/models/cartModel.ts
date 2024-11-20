@@ -1,6 +1,9 @@
 import mongoose, {Document, Schema} from "mongoose"
 
 import { IProductRef } from "../types/modalTypes";
+import { numberToDecimal128,decimal128ToNumber} from "../types/modalTypes";
+import { required } from "joi";
+
 
 export interface ICart extends Document {
     user:mongoose.Schema.Types.ObjectId,
@@ -12,12 +15,16 @@ export interface ICart extends Document {
 
 const cartSchema = new Schema<ICart>({
     user:{type: mongoose.Schema.Types.ObjectId, ref: 'User',required:true},
-    products:[{productId:{type:mongoose.Schema.Types.ObjectId,ref:"Product",required:true},quantity:{type: Number, 
-      required: true, min:[1,"Quantity must be at least 1"] },
+    products:[{productId:{type:mongoose.Schema.Types.ObjectId,ref:"Product",required:true},color:{type:String,required:true},quantity:[{quantity:{type:Number,required:true,min:[1,"Quantity must be at least 1"]},size:{type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]}}]
     }],
-    totalPrice:{type:Schema.Types.Decimal128,default: 0}
+    totalPrice:{type:Schema.Types.Decimal128,default: 0.0,get:decimal128ToNumber, set: numberToDecimal128}
 });
 
+
+cartSchema.set("toJSON",{transform:(doc,ret)=>{
+    delete ret.user
+    return
+}});
 
 cartSchema.methods.updatePrice = async function (): Promise<void> {
     let total = 0;
@@ -44,5 +51,6 @@ cartSchema.pre("save",async function(next){
         next(error)
     }
 })
+
 
 export const CartModel =mongoose.model<ICart>("Cart",cartSchema);
