@@ -9,15 +9,15 @@ router.post("/register",registerUser);
 router.post("/login",loginUser)
 
 // Get profile
-
+router.get("/")
 // Update profile
-
+router.put("/")
 // Get cart
-// Update cart
-
-// Make an order 
-
+router.get("/cart")
+// Make an order
+router.post("/cart/order")
 // View users' orders
-
+router.get("/orders")
 // View users' order
+router.get("/orders/:orderId")
 export const userRouter:Router = router;
