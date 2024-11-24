@@ -4,9 +4,10 @@ import fs from "fs"
 import handlebars from "handlebars"
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import { IUser } from '../models/userModel';
 
 
-export const emailVerification = async (recipientEmail:string,firstname:string,subject:string="Email Verification") => {
+export const emailVerification = async (user:IUser,recipientEmail:string,firstname:string,subject:string="Email Verification") => {
   try {
     const transporter = nodemailer.createTransport({
       service: process.env.CENTRAL_SERVICE,
@@ -33,6 +34,8 @@ export const emailVerification = async (recipientEmail:string,firstname:string,s
         throw Error("Error sending email");
       }
     });
+    user.verificationTokenExpiresAt=new Date(Date.now() +15 * 60 * 1000)
+    await user.save()
   } catch (error:any) {
     throw Error(error);  
   }

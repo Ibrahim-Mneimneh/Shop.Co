@@ -43,6 +43,7 @@ export const verifyEmailAuth = async (req: Request, res: Response) => {
 
     // Mark as verified and update it 
     user.isVerified = true;
+    user.verificationTokenExpiresAt = undefined;
     await user.save();
 
     

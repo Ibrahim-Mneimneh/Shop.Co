@@ -93,13 +93,13 @@ export const registerUser = async (req: Request, res: Response)=>{
         const hashedPassword= await bcrypt.hash(data.password,salt)
         data.password = hashedPassword;
         
-        const userData = await UserModel.create(data) 
+        const user = await UserModel.create(data) 
 
         // Send email verification
-        emailVerification(value.email,value.firstname)
+        emailVerification(user,value.email,value.firstname)
 
         // Create a cart for this user
-        await CartModel.create({user:userData._id})
+        await CartModel.create({user:user._id})
 
     // send the data back with the token 
     res.status(201).json({message:"User registered Successfully"})
@@ -122,22 +122,35 @@ export const loginUser = async (req:Request,res:Response)=>{
     } 
 
     // check if the user is available 
-    const userData = await UserModel.findOne({email:value.email})
-    if(!userData){
+    const user = await UserModel.findOne({email:value.email})
+    if(!user){
       res.status(404).json({ message: "User not found"});
         return
     }
+    // check if the user is verified
+    if(!user.isVerified){
+      if(user.verificationTokenExpiresAt && new Date(user.verificationTokenExpiresAt)<new Date()){
+        emailVerification(user,user.email,user.name.split(" ")[0])
+        res.status(403).json({
+        message: 'Your verification token has expired. Please check your email for a new verification link.'});
+        return
+      }else{
+        res.status(403).json({
+        message: 'Your account is not verified. Please check your email to verify your account.'});
+        return
+      }
+    }
     // get password unhash it and check if the password is true 
-    const match = await bcrypt.compare(value.password,userData.password)
+    const match = await bcrypt.compare(value.password,user.password)
 
     if(!match){
       res.status(400).json({ message: "Incorrect email/password"});
         return
     }
     // generate the user token (JWT)
-    const token:string =jwtGenerator(userData._id as Schema.Types.ObjectId,userData.passwordChangedAt? userData.passwordChangedAt.toISOString():"",userData.cart as  Schema.Types.ObjectId )
+    const token:string =jwtGenerator(user._id as Schema.Types.ObjectId,user.passwordChangedAt? user.passwordChangedAt.toISOString():"",user.cart as  Schema.Types.ObjectId )
 
-    res.status(200).json({message:"Login successful",data:userData,token}) 
+    res.status(200).json({message:"Login successful",data:user,token}) 
   }catch(error){
     console.log(error)
     res.status(500).json({message:"Server Error"})
