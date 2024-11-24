@@ -2,7 +2,6 @@ import mongoose, {Document, Schema} from "mongoose"
 
 import { IProductRef } from "../types/modalTypes";
 import { numberToDecimal128,decimal128ToNumber} from "../types/modalTypes";
-import { required } from "joi";
 
 
 export interface ICart extends Document {

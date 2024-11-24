@@ -5,6 +5,7 @@ export interface IUser extends Document {
     password: string,
     email: string,
     createdAt:Date,
+    verificationTokenExpiresAt?:Date,
     passwordChangedAt:Date,
     address:string,
     isVerified:boolean
@@ -24,6 +25,12 @@ const userSchema = new Schema<IUser>({
     },
     passwordChangedAt:{type:Date}, // Update for later 
     isVerified:{type:Boolean,default:false},
+    verificationTokenExpiresAt:{type:Date, validate: {
+      validator: function (value: Date) {
+        return !(this.isVerified && value);
+      },
+      message: 'verificationTokenExpiresAt should not be set, user already verified',
+    },},
     address:{type:String,
     required:true},
     orders:[{
@@ -40,6 +47,7 @@ userSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret._id
     delete ret.cart
     delete ret.orders
+    delete ret.verificationTokenExpiresAt
     return ret
 }});
 
