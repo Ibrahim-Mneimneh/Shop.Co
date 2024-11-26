@@ -1,19 +1,23 @@
-import { Request, RequestHandler, Response } from "express";
+import { Request, Response } from "express";
 import jwt from "jsonwebtoken"
 import { UserModel } from "../models/userModel";
+import { Schema } from "mongoose";
 
 export interface IJwtPayload {
-  userId: string;
+  userId: Schema.Types.ObjectId;
   passwordChangedAt: string;
-  cartId: string;
+  cartId: Schema.Types.ObjectId;
+}
+export interface AuthRequest extends Request{
+    userId?: Schema.Types.ObjectId;
+    cartId?: Schema.Types.ObjectId;
 }
 
-
-export const authMiddleware = async (req:Request,res:Response,next:Function)=>{
+export const authMiddleware = async (req:AuthRequest,res:Response,next:Function)=>{
 try{
     const { authorization } = req.headers;
 
-    if (!authorization || authorization.startsWith('Bearer ')) {
+    if (!authorization || !authorization.startsWith('Bearer ')) {
         res.status(401).json({ message: "Authorization token required!" });
         return
     }
@@ -37,13 +41,13 @@ try{
     }
 
     // check if the pass is changed prev tokens are rejected
-    if(user.passwordChangedAt.toISOString()>passwordChangedAt){
+    if(user.passwordChangedAt && user.passwordChangedAt.toISOString()>passwordChangedAt){
         res.status(401).json({message:"UnAuthorized Access - User token expired"})
         return
     }
 
-    //req.userId=user._id
-    //req.cartId=cartId
+    req.userId=user._id as Schema.Types.ObjectId
+    req.cartId=cartId as Schema.Types.ObjectId
 
     next();
 

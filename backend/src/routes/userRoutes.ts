@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
-import { loginUser, registerUser } from '../controllers/userController';
+import { getUser, loginUser, registerUser } from '../controllers/userController';
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const router: Router = express.Router();
 
@@ -8,8 +9,10 @@ router.post("/register",registerUser);
 // Login
 router.post("/login",loginUser)
 
+router.use("/",authMiddleware)
+
 // Get profile
-router.get("/")
+router.get("/",getUser)
 // Update profile
 router.put("/")
 // Get cart

@@ -48,6 +48,8 @@ userSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.cart
     delete ret.orders
     delete ret.verificationTokenExpiresAt
+    delete ret.__v
+    delete ret.isVerified
     return ret
 }});
 
