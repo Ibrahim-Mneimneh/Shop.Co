@@ -11,6 +11,7 @@ import { jwtGenerator } from "./authController";
 
 import { Schema } from "mongoose";
 import { AuthRequest } from "../middleware/authMiddleware";
+
 export interface IRegister{
     email:string,
     password:string,
@@ -65,7 +66,7 @@ const loginSchema= Joi.object<ILogin>({
   }),
 })
 
-export const registerUser = async (req: Request, res: Response)=>{
+export const registerUser:RequestHandler = async (req: Request, res: Response)=>{
     try{
         const { error, value } = registerSchema.validate(req.body);
 
@@ -113,7 +114,7 @@ export const registerUser = async (req: Request, res: Response)=>{
 }
 
 
-export const loginUser = async (req:Request,res:Response)=>{
+export const loginUser:RequestHandler = async (req:Request,res:Response)=>{
   try{
     // I need to require the data from the user 
     const { error, value } = loginSchema.validate(req.body);
@@ -151,7 +152,7 @@ export const loginUser = async (req:Request,res:Response)=>{
     // generate the user token (JWT)
     const token:string =jwtGenerator(user._id as Schema.Types.ObjectId,user.passwordChangedAt? user.passwordChangedAt.toISOString():"",user.cart as  Schema.Types.ObjectId )
 
-    res.status(200).json({message:"Login successful",data:user,token}) 
+    res.status(200).json({message:"Login Successful",data:user,token}) 
   }catch(error){
     console.log(error)
     res.status(500).json({message:"Server Error"})
@@ -167,7 +168,7 @@ export const getUser = async (req:AuthRequest, res:Response)=>{
       res.status(404).json({message:"User not found"})
       return
     }
-    res.status(200).json({message:"User found Successfully",data:userData})
+    res.status(200).json({message:"Successful",data:userData})
 
   }catch(error){
     console.log(error)

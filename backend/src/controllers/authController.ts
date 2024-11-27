@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { Request, Response } from "express";
+import { Request, RequestHandler, Response } from "express";
 import { UserModel } from "../models/userModel";
 import { Schema } from "mongoose";
 
@@ -13,14 +13,14 @@ export const jwtGenerator = (userId:Schema.Types.ObjectId,passwordChangedAt:stri
 
 
 // Verify email route 
-export const verifyEmailAuth = async (req: Request, res: Response) => {
+export const verifyEmailAuth:RequestHandler = async (req: Request, res: Response) => {
   const { token } = req.params;
   
   try {
-    // Verify the JWT token
+    // verify the JWT token
     const decoded = jwt.verify(token, process.env.JWT_VERIFICATION_SECRET!) as { email: string };
 
-    //Check if the user is exists 
+    // check if the user is exists 
     const user = await UserModel.findOne({ email: decoded.email });
     if (!user) {
       return res.render('verificationResult', {
@@ -41,7 +41,7 @@ export const verifyEmailAuth = async (req: Request, res: Response) => {
       });
     }
 
-    // Mark as verified and update it 
+    // mark as verified and update it 
     user.isVerified = true;
     user.verificationTokenExpiresAt = undefined;
     await user.save();
