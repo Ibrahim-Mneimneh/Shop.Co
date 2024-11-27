@@ -45,8 +45,12 @@ try{
         res.status(401).json({message:"UnAuthorized Access - User token expired"})
         return
     }
-
-    req.userId=user._id as Schema.Types.ObjectId
+    // verify Token cartId matches user's cartId
+    if(cartId!==user.cart){
+        res.status(401).json({message:"UnAuthorized Access"})
+        return
+    }
+    req.userId=userId as Schema.Types.ObjectId
     req.cartId=cartId as Schema.Types.ObjectId
 
     next();
