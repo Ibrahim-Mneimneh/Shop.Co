@@ -1,15 +1,29 @@
 import jwt from "jsonwebtoken";
 import { Request, RequestHandler, Response } from "express";
-import { UserModel } from "../models/userModel";
 import { Schema } from "mongoose";
 
 
-// Generate JWT function
-export const jwtGenerator = (userId:Schema.Types.ObjectId,passwordChangedAt:string,cartId:Schema.Types.ObjectId):string=>{
-  const token:string = jwt.sign({userId,passwordChangedAt, cartId }, process.env.JWT_SECRET as string, {expiresIn:"1d"});
-  return token
-}
+import { UserModel } from "../models/userModel";
+import { IJwtPayload } from "../types/jwtPayloadTypes";
 
+
+// Generate JWT function
+export const jwtGenerator = (userId:Schema.Types.ObjectId,passwordChangedAt:string,cartId?:Schema.Types.ObjectId,role:string="user"):string=>{
+  
+  let payload:IJwtPayload
+
+  if(role==="user"){
+    if(!cartId){
+      throw new Error("cartId is required for the user role");
+    }
+    payload = { userId, passwordChangedAt, cartId};
+  }else{
+    payload = { userId, passwordChangedAt, role};
+  }
+  const expiresIn = role==="admin"?"1d":"12h"
+  return jwt.sign(payload, process.env.JWT_SECRET as string, {expiresIn});
+
+}
 
 
 // Verify email route 
