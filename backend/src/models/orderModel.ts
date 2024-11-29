@@ -4,6 +4,7 @@ import { IObjectId, IProductRef } from "../types/modalTypes";
 import { decimal128ToNumber,numberToDecimal128 } from "../types/modalTypes";
 
 export interface IOrder extends Document {
+    _id:Types.ObjectId,
     user:IObjectId,
     products: IProductRef,
     totalPrice:Types.Decimal128,

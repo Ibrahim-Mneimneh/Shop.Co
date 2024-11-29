@@ -6,7 +6,7 @@ export interface IQuantity {
   quantityLeft: number;
 }
 
-export interface IProductVariant extends Document {
+export interface IProductVariant{
   color:string,
   details:{ 
   quantity:IQuantity[],
@@ -22,6 +22,7 @@ export interface IProductVariant extends Document {
 }
 
 export interface IProduct extends Document {
+    _id:Types.ObjectId,
     name:string,
     description:string,
     gender:String,

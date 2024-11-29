@@ -5,6 +5,7 @@ import { numberToDecimal128,decimal128ToNumber} from "../types/modalTypes";
 
 
 export interface ICart extends Document {
+    _id:Types.ObjectId,
     user:Types.ObjectId,
     products:IProductRef[],
     totalPrice: Number
