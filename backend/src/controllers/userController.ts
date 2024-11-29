@@ -5,12 +5,12 @@ import bcrypt from "bcryptjs"
 
 import { UserModel } from "../models/userModel";
 import { emailVerification } from "./verificationController";
-import { CartModel } from "../models/cartModel";
+import { CartModel, ICart } from "../models/cartModel";
 import { jwtGenerator } from "./authController";
 
 
-import { Schema } from "mongoose";
 import { AuthRequest } from "../middleware/authMiddleware";
+import { IObjectId } from "../types/modalTypes";
 
 export interface IRegister{
     email:string,
@@ -55,7 +55,7 @@ const registerSchema = Joi.object<IRegister>({
     'any.required': 'Building number is required',
   }),
 });
-const loginSchema= Joi.object<ILogin>({
+export const loginSchema= Joi.object<ILogin>({
   email: Joi.string().email().required().messages({
     'string.email': 'Please provide a valid email address',
     'any.required': 'Email is required',
@@ -101,7 +101,10 @@ export const registerUser:RequestHandler = async (req: Request, res: Response)=>
         emailVerification(user,value.email,value.firstname)
 
         // Create a cart for this user
-        await CartModel.create({user:user._id})
+        const {_id }:ICart = await CartModel.create({user:user._id})
+
+        user.cart=_id
+        await user.save()
 
     // send the data back with the token 
     res.status(201).json({message:"User registered Successfully"})
@@ -150,7 +153,7 @@ export const loginUser:RequestHandler = async (req:Request,res:Response)=>{
         return
     }
     // generate the user token (JWT)
-    const token:string =jwtGenerator(user._id as Schema.Types.ObjectId,user.passwordChangedAt? user.passwordChangedAt.toISOString():"",user.cart as  Schema.Types.ObjectId )
+    const token:string =jwtGenerator(user._id as IObjectId,user.passwordChangedAt? user.passwordChangedAt.toISOString():"",user.cart as IObjectId )
 
     res.status(200).json({message:"Login Successful",data:user,token}) 
   }catch(error){

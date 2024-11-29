@@ -1,14 +1,14 @@
 import jwt from "jsonwebtoken";
 import { Request, RequestHandler, Response } from "express";
-import { Schema } from "mongoose";
 
 
 import { UserModel } from "../models/userModel";
 import { IJwtPayload } from "../types/jwtPayloadTypes";
+import { IObjectId } from "../types/modalTypes";
 
 
 // Generate JWT function
-export const jwtGenerator = (userId:Schema.Types.ObjectId,passwordChangedAt:string,cartId?:Schema.Types.ObjectId,role:string="user"):string=>{
+export const jwtGenerator = (userId:IObjectId,passwordChangedAt:string,cartId?:IObjectId,role:string="user"):string=>{
   
   let payload:IJwtPayload
 

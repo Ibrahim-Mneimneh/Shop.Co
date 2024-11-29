@@ -1,10 +1,11 @@
 import { Request, RequestHandler, Response, } from "express";
 import bcrypt from "bcryptjs"
-import { Schema } from "mongoose";
+
 
 import { loginSchema } from "./userController";
 import { UserModel } from "../models/userModel";
 import { jwtGenerator } from "./authController";
+import { IObjectId } from "../types/modalTypes";
 
 
 // Admin login
@@ -30,7 +31,7 @@ export const adminLogin = async (req:Request,res:Response)=>{
         }
 
         // generate the user token (JWT)
-        const token:string =jwtGenerator(user._id as Schema.Types.ObjectId,user.passwordChangedAt? user.passwordChangedAt.toISOString():"",undefined,user.role)
+        const token:string =jwtGenerator(user._id as IObjectId,user.passwordChangedAt? user.passwordChangedAt.toISOString():"",undefined,user.role)
 
         res.status(200).json({message:"Login Successful",data:user,token}) 
 
