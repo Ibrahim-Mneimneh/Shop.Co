@@ -1,4 +1,4 @@
-import mongoose, {Document, Schema} from "mongoose"
+import mongoose, {Document,Types,Schema} from "mongoose"
 import { decimal128ToNumber, numberToDecimal128 } from "../types/modalTypes";
 
 export interface IQuantity {
@@ -11,11 +11,11 @@ export interface IProductVariant extends Document {
   details:{ 
   quantity:IQuantity[],
   images: String[];
-  originalPrice: Schema.Types.Decimal128;
+  originalPrice: Types.Decimal128;
   isOnSale: boolean;
   saleOptions?: {
-    startDate: Schema.Types.Date;
-    endDate: Schema.Types.Date;
+    startDate: Date;
+    endDate: Date;
     discountPercentage: number;
     }
   }

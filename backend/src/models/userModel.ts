@@ -1,5 +1,6 @@
-import mongoose, {Document, Schema} from "mongoose"
+import mongoose, {Document, Schema, Types} from "mongoose"
 import bcrypt from "bcryptjs"
+
 export interface IUser extends Document {
     name: string,
     password: string,
@@ -10,15 +11,15 @@ export interface IUser extends Document {
     address:string,
     isVerified:boolean
     role:string,
-    cart:mongoose.Schema.Types.ObjectId,
-    orders:mongoose.Schema.Types.ObjectId[]
-
+    cart:Types.ObjectId,
+    orders:Types.ObjectId[]
 }
 
 const userSchema = new Schema<IUser>({
     name:{type:String,required:true},
     password:{ type:String,required:true,},
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true,trim: true,
+    lowercase: true,},
     role:{type: String,
       default: "user",
       enum: ["admin", "user"],

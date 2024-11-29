@@ -1,13 +1,13 @@
-import mongoose, {Document, Schema} from "mongoose"
+import mongoose, {Document,Types, Schema} from "mongoose"
 
 import { IProductRef } from "../types/modalTypes";
 import { numberToDecimal128,decimal128ToNumber} from "../types/modalTypes";
 
 
 export interface ICart extends Document {
-    user:mongoose.Schema.Types.ObjectId,
+    user:Types.ObjectId,
     products:IProductRef[],
-    totalPrice: Schema.Types.Decimal128
+    totalPrice: Number
     updatePrice(): Promise<void>;
 }
 
@@ -38,7 +38,7 @@ cartSchema.methods.updatePrice = async function (): Promise<void> {
         }
     }
 
-    this.totalPrice = mongoose.Types.Decimal128.fromString(total.toString());
+    this.totalPrice = Types.Decimal128.fromString(total.toString());
 };
 
 cartSchema.pre("save",async function(next){

@@ -1,11 +1,12 @@
-import mongoose, {Document, Schema} from "mongoose"
-import { IProductRef } from "../types/modalTypes";
+import mongoose, {Document,Types, Schema} from "mongoose"
 
+import { IObjectId, IProductRef } from "../types/modalTypes";
 import { decimal128ToNumber,numberToDecimal128 } from "../types/modalTypes";
+
 export interface IOrder extends Document {
-    user:mongoose.Schema.Types.ObjectId,
+    user:IObjectId,
     products: IProductRef,
-    totalPrice:Schema.Types.Decimal128,
+    totalPrice:Types.Decimal128,
     orderStatus:string
 }
 
@@ -14,7 +15,7 @@ const orderSchema = new Schema<IOrder>({
     products:[{productId:{type:mongoose.Schema.Types.ObjectId,ref:"Product",required:true},quantity:{type: Number, required: true,},
     price:{ type: Schema.Types.Decimal128, required: true, get:decimal128ToNumber, set: numberToDecimal128}
     }],
-    totalPrice:{type:Schema.Types.Decimal128,required:true,get:decimal128ToNumber, set: numberToDecimal128},
+    totalPrice:{type:Schema.Types.Decimal128,required:true,},
     orderStatus:{type:String,default:"Pending",enum:["Pending","In-delivery","Delivered"]}
 },{timestamps:true});
 
@@ -23,7 +24,5 @@ orderSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.user
     return ret
 }});
-
-
 
 export const OrderModel =mongoose.model<IOrder>("Order",orderSchema);
