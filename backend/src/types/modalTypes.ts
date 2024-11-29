@@ -1,9 +1,14 @@
-import mongoose, {Document, Schema} from "mongoose"
+import mongoose,{Types,Schema} from "mongoose"
+
+export type IObjectId=mongoose.Types.ObjectId
+export type IDecimal=mongoose.Types.Decimal128
 
 export const decimal128ToNumber = (value: Schema.Types.Decimal128): number => parseFloat(value.toString());
 
-export const numberToDecimal128 = (value: number): mongoose.Types.Decimal128 =>
-  mongoose.Types.Decimal128.fromString(value.toFixed(2));
+
+export const numberToDecimal128 = (value: number): Types.Decimal128 =>
+  Types.Decimal128.fromString(value.toFixed(2));
+
 
 
 export interface IOrderQuantity{
@@ -12,8 +17,8 @@ export interface IOrderQuantity{
 }
 
 export interface IProductRef {
-    productId: mongoose.Schema.Types.ObjectId;
+    productId: Types.ObjectId;
     quantity: IOrderQuantity[];
-    price?:Schema.Types.Decimal128
+    price?:Types.Decimal128
     color:string,
 }
