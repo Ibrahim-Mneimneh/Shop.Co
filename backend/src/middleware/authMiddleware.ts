@@ -1,16 +1,16 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken"
 import { UserModel } from "../models/userModel";
-import { Schema } from "mongoose";
 
-export interface IJwtPayload {
-  userId: Schema.Types.ObjectId;
-  passwordChangedAt: string;
-  cartId: Schema.Types.ObjectId;
-}
+import { IAdminJwtPayload, IJwtPayload, isAdminPayload, IUserJwtPayload } from "../types/jwtPayloadTypes";
+import { IObjectId } from "../types/modalTypes";
+
+
+
 export interface AuthRequest extends Request{
-    userId?: Schema.Types.ObjectId;
-    cartId?: Schema.Types.ObjectId;
+    userId?: IObjectId;
+    cartId?: IObjectId;
+    role?:string
 }
 
 export const authMiddleware = async (req:AuthRequest,res:Response,next:Function)=>{
@@ -23,36 +23,57 @@ try{
     }
     const token = authorization.split(" ")[1];
 
-    const { userId, passwordChangedAt, cartId } = jwt.verify(token, process.env.JWT_SECRET as string) as IJwtPayload
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as IJwtPayload
 
-    const user = await UserModel.findById(userId);
-    //user exists
-    if (!user) {
-      res.status(404).json({ message: "UnAuthorized Access - User not found" });
-      return
+    const isAdminsPayload= isAdminPayload(decoded)
+
+    // If the user is 
+    if(isAdminsPayload && decoded.role==="admin"){
+        const {userId,passwordChangedAt,role}=decoded as IAdminJwtPayload
+        const user = await UserModel.findById(userId);
+        //user exists
+        if (!user) {
+            res.status(404).json({ message: "UnAuthorized Access - User not found" });
+            return
+        }
+        // check if the pass is changed prev tokens are rejected
+        if(user.passwordChangedAt && user.passwordChangedAt.toISOString()>passwordChangedAt){
+            res.status(401).json({message:"UnAuthorized Access - User token expired"})
+            return
+        }
+        req.role=role as string
+        req.userId=userId as IObjectId
+    }else{
+        const {userId,passwordChangedAt,cartId}:IUserJwtPayload=decoded as IUserJwtPayload
+        const user = await UserModel.findById(userId);
+        //user exists
+        if (!user) {
+            res.status(404).json({ message: "UnAuthorized Access - User not found" });
+            return
+        }
+
+        // if user is not verified 
+        if(!user.isVerified){
+            res.status(401).json({message:"UnAuthorized Access - User not verified"}) 
+            return
+            // Send a verification code or not accorrding to the mechanism
+
+        }
+
+        // check if the pass is changed prev tokens are rejected
+        if(user.passwordChangedAt && user.passwordChangedAt.toISOString()>passwordChangedAt){
+            res.status(401).json({message:"UnAuthorized Access - User token expired"})
+            return
+        }
+        // verify Token cartId matches user's cartId
+        if(cartId.toString()!==user.cart.toString()){
+            res.status(401).json({message:"UnAuthorized Access"})
+            return
+        }
+        req.cartId=cartId as IObjectId
+        req.userId=userId as IObjectId
     }
-
-    // if user is not verified 
-    if(!user.isVerified){
-        res.status(401).json({message:"UnAuthorized Access - User not verified"}) 
-        return
-        // Send a verification code or not accorrding to the mechanism
-
-    }
-
-    // check if the pass is changed prev tokens are rejected
-    if(user.passwordChangedAt && user.passwordChangedAt.toISOString()>passwordChangedAt){
-        res.status(401).json({message:"UnAuthorized Access - User token expired"})
-        return
-    }
-    // verify Token cartId matches user's cartId
-    if(cartId!==user.cart){
-        res.status(401).json({message:"UnAuthorized Access"})
-        return
-    }
-    req.userId=userId as Schema.Types.ObjectId
-    req.cartId=cartId as Schema.Types.ObjectId
-
+    
     next();
 
     }catch(error:any){
