@@ -1,7 +1,7 @@
 import mongoose,{Types,Schema} from "mongoose"
 
-export type IObjectId=mongoose.Types.ObjectId
-export type IDecimal=mongoose.Types.Decimal128
+export type IObjectId=Types.ObjectId
+export type IDecimal=Types.Decimal128
 
 export const decimal128ToNumber = (value: Schema.Types.Decimal128): number => parseFloat(value.toString());
 
