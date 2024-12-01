@@ -4,10 +4,11 @@ import mongoose from 'mongoose';
 import clc from "cli-color"
 import {engine} from "express-handlebars"
 import path from 'path';
-import exphbs from 'express-handlebars';
+
 
 import { userRouter } from './routes/userRoutes';
 import { authRouter} from "./routes/authRoutes"
+import { adminRoutes } from './routes/adminRoute';
 
 
 dotenv.config({ path: __dirname + '/.env' });
@@ -43,6 +44,7 @@ app.use(async(req: Request, res: Response, next: Function) => {
 // Routes
 app.use("/api/"+process.env.VERSION+"/user", userRouter);
 app.use("/api/"+process.env.VERSION+"/auth", authRouter);
+app.use("/api/"+process.env.VERSION+"/admin",adminRoutes)
 
 // Error handling middleware
 app.use((err: any, req: Request, res: Response, next: Function) => {
