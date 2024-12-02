@@ -7,8 +7,9 @@ export interface IQuantity {
 }
 
 export interface IProductVariant{
+  _id:Types.ObjectId,
+  details:{
   color:string,
-  details:{ 
   quantity:IQuantity[],
   images: String[];
   originalPrice: Types.Decimal128;
@@ -44,7 +45,7 @@ const productSchema = new Schema<IProduct>({
     gender:{type:String,enum:["Male","Female","Unisex"],required:true},
     category:{type:String,enum:["Jackets","Pullover","Suits","Pants","T-Shirts","Accessories"],required:true},
     rating:{type:Number,default:0.0,min:0.0,max:5.0},
-    variants:[{ color:{type:String,required:true},details:{
+    variants:[{_id:{type: Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId(),unique:true} ,details:{
                 quantity: [{
                     size: {type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]},
                     quantityLeft: { type: Number, required: true, default: 0, min:[0,"Quantity cannot be negative"]}}],
