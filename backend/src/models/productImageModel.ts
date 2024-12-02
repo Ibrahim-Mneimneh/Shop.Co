@@ -10,7 +10,8 @@ export interface IProductImage extends Document{
 
 
 interface IProductImageModel extends Model<IProductImage> {
-  linkImages(imageIds: Types.ObjectId[]): Promise<void>;
+  linkImages(imageIds: Types.ObjectId[]): Promise<{success: boolean}>;
+  saveBatch(base64Images:string[]):Promise<{success: boolean,imageIds:string[]}>
 }
 
 const ProductImageSchema = new Schema<IProductImage>({
