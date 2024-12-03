@@ -9,6 +9,7 @@ import path from 'path';
 import { userRouter } from './routes/userRoutes';
 import { authRouter} from "./routes/authRoutes"
 import { adminRoutes } from './routes/adminRoute';
+import { publicRouter } from './routes/publicRoutes';
 
 
 dotenv.config({ path: __dirname + '/.env' });
@@ -42,6 +43,7 @@ app.use(async(req: Request, res: Response, next: Function) => {
 });
 
 // Routes
+app.use("/api/"+process.env.VERSION+"/public", publicRouter);
 app.use("/api/"+process.env.VERSION+"/user", userRouter);
 app.use("/api/"+process.env.VERSION+"/auth", authRouter);
 app.use("/api/"+process.env.VERSION+"/admin",adminRoutes)
