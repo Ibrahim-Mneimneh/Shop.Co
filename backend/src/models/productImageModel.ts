@@ -1,9 +1,11 @@
 import mongoose,{Document,Model,Schema,Types} from "mongoose";
 import { IObjectId } from "../types/modalTypes";
+import { IBase64Image } from "../types/adminControllerTypes";
 
 export interface IProductImage extends Document{
     _id:Types.ObjectId,
     image:string,
+    type:string,
     linked:boolean,
     expiresAt?:Date,
 }
@@ -11,11 +13,12 @@ export interface IProductImage extends Document{
 
 interface IProductImageModel extends Model<IProductImage> {
   linkImages(imageIds: Types.ObjectId[]): Promise<{success: boolean}>;
-  saveBatch(base64Images:string[]):Promise<{success: boolean,imageIds:string[]}>
+  saveBatch(base64Images:IBase64Image[]):Promise<{success: boolean,imageIds:string[]}>
 }
 
 const ProductImageSchema = new Schema<IProductImage>({
     image:{type:String, required:true,},
+    type:{type:String,enum:["jpeg","png","jpg"]},
     linked:{type:Boolean, default:false},
     expiresAt:{type:Date,  validate:{validator: function(value:Date){
         return !(this.linked && value)
@@ -46,11 +49,11 @@ ProductImageSchema.statics.linkImages= async function(imageIds:IObjectId[]):Prom
     }
 }
 
-ProductImageSchema.statics.saveBatch= async function(base64Images:string[]):Promise<{success: boolean,imageIds:string[]}>{
+ProductImageSchema.statics.saveBatch= async function(base64Images:IBase64Image[]):Promise<{success: boolean,imageIds:string[]}>{
     try{
         const operations = base64Images.map((base64Image) => ({
         insertOne: {
-            document: { image:base64Image }
+            document: { image:base64Image.content,expiresAt: new Date(Date.now() + 15 * 60 * 1000),type:base64Image.type }
         }
         }));
         const result = await this.bulkWrite(operations);
