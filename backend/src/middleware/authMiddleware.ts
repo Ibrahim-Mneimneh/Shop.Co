@@ -77,16 +77,17 @@ try{
     next();
 
     }catch(error:any){
-        if (error instanceof jwt.JsonWebTokenError) {
-            console.error("Invalid token:", error.message);
-            res.status(401).json({message:"Unauthorized Access"})
-            } else if (error instanceof jwt.TokenExpiredError) {
-                console.error("Token has expired:", error.message);
-                res.status(401).json({message:"Unauthorized Access"})
-                } else {
-                    console.error("JWT verification failed:", error.message);
-                    res.status(401).json({message:"Unauthorized Access"})
-                }
+
+    if (error instanceof jwt.JsonWebTokenError) {
+        res.status(401).json({ message: "Unauthorized Access - Invalid token" });
+        return
+    }
+
+    if (error instanceof jwt.TokenExpiredError) {
+            res.status(401).json({ message: "Unauthorized Access - Token expired" });
+            return
+    }
+                
     res.status(500).json({message:"Server Error"})
 }
 }
