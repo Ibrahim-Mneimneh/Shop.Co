@@ -1,9 +1,11 @@
 import Joi from "joi"
 
-import { IQuantity } from "../models/productModel"
-import { IProduct } from "../models/productModel"
 
-const quantitySchema =Joi.object<IQuantity>({
+import { IProduct } from "../models/productModel"
+import { IQuantity } from "../models/productVariantModel"
+
+const quantitySchema =Joi.object<IQuantity
+>({
     size:Joi.string().valid("XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size").required(),
     quantityLeft:Joi.number().integer().min(0).required()
 })
@@ -30,16 +32,7 @@ const variantSchema=Joi.object({
     images: Joi.array()
       .items(
         Joi.string()
-          .uri()
-          .regex(
-            /^(http?:\/\/)([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/
-          )
-      )
-      .min(1)
-      .required()
-      .messages({
-        "string.pattern.base": "Each image must be a valid URL",
-      }),
+      ).min(1).required(),
     originalPrice: Joi.number().min(0).required(),
     isOnSale: Joi.boolean().default(false),
     saleOptions: Joi.when("isOnSale", {
@@ -50,7 +43,7 @@ const variantSchema=Joi.object({
   }).required(),
 })
 
-const registerSchema = Joi.object<IProduct>({
+export const addProductSchema = Joi.object<IProduct>({
     name: Joi.string().required().messages({
     "string.base": "Product name is required and must be a valid string.",
   }),
