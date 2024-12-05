@@ -3,6 +3,7 @@ import Joi from "joi"
 
 import { IProduct } from "../models/productModel"
 import { IQuantity } from "../models/productVariantModel"
+import { Types } from "mongoose"
 
 const quantitySchema =Joi.object<IQuantity
 >({
@@ -25,13 +26,17 @@ const saleOptionsSchema = Joi.object({
   })
 })
 
-const variantSchema=Joi.object({
-    details: Joi.object({
+export const variantSchema=Joi.object({
     color:Joi.string().pattern(/^#([0-9a-fA-F]{3}){1,2}$/).message('Invalid hex color'),
     quantity: Joi.array().items(quantitySchema).min(1).required(),
     images: Joi.array()
       .items(
-        Joi.string()
+        Joi.string().required().custom((value, helper) => {
+          if (!Types.ObjectId.isValid(value)) {
+            return helper.message({"any.invalid": "Image must be a valid ObjectId."});
+          }
+          return value;
+        })
       ).min(1).required(),
     originalPrice: Joi.number().min(0).required(),
     isOnSale: Joi.boolean().default(false),
@@ -40,11 +45,10 @@ const variantSchema=Joi.object({
       then: saleOptionsSchema.required(),
       otherwise: Joi.forbidden(),
     }),
-  }).required(),
 })
 
 export const addProductSchema = Joi.object<IProduct>({
-    name: Joi.string().required().messages({
+  name: Joi.string().required().messages({
     "string.base": "Product name is required and must be a valid string.",
   }),
   description: Joi.string().max(600).required().messages({
@@ -66,8 +70,14 @@ export const addProductSchema = Joi.object<IProduct>({
     .messages({
       "string.base": "Category must be one of: Jackets, Pullover, Suits, Pants, T-Shirts, Accessories.",
     }),
-  rating: Joi.number().min(0).max(5).default(0),
-  variants: Joi.array().items(variantSchema).min(1).required().messages({
-    "array.min": "At least one product variant is required.",
-  }),
 })
+
+export const addProductVariantSchema=Joi.object({
+  variants: Joi.array()
+    .items(variantSchema)
+    .min(1)
+    .required()
+    .messages({
+      "array.min": "At least one product variant is required.",
+    }),
+});
