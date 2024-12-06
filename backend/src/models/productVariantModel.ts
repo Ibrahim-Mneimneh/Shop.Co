@@ -46,6 +46,46 @@ const productVariantSchema = new Schema<IProductVariant>({
 },{timestamps:true});
 
 
+productVariantSchema.statics.addVariant= async function(variant:IProductVariant):Promise<{success:boolean,productVariantId?:IObjectId,errorMessage:string}>{
+  try{  
+    // convert imageIds to ObjectId exclude duplicate images from linking
+    const imageIds:IObjectId[]=[...new Set(variant.images)].map(imageId=>(new Types.ObjectId(imageId)))
+    console.log("FilteredImages:" +imageIds)
+    // Check images first
+    let imageIdsToLink:IObjectId[]=[] 
+    const variantImageError = (await Promise.all(imageIds.map( async (imageId,index)=>{
+      const imageData = await ProductImageModel.findById(imageId)
+      if(!imageData){
+        return `Image at index ${index} is invalid`
+      }
+      if(imageData && !imageData.isLinked){
+        imageIdsToLink.push(imageId) 
+      }
+      return null
+    }))).filter((errorMessage)=>errorMessage!==null)
+    if(variantImageError.length>0){
+      return {success:false,errorMessage:variantImageError.join(", ")}
+    }
+    // Add product variant 
+    const productVariant:IProductVariant = await this.create(variant)
+    if(!productVariant){
+      return {success:false,errorMessage:"Failed to add product variant"}
+    }
+
+    // link images if needed
+    if(imageIdsToLink && imageIdsToLink.length>0){
+      const linkedImage:{success:boolean,errorMessage:string}= await ProductImageModel.linkImages(imageIdsToLink)
+      if(!linkedImage.success){
+        return {success:false,errorMessage:linkedImage.errorMessage}
+      }
+    }
+
+    return {success:true,productVariantId:productVariant._id,errorMessage:""}
+  }catch(error:any){
+    console.log("Add variant : "+error)
+    throw new Error('Error adding variant: ' + error.message);
+  }
+}
 
 export const ProductVariantModel =mongoose.model<IProductVariant
 ,IProductVariantModel>("ProductVariant",productVariantSchema);
