@@ -72,7 +72,7 @@ export const registerUser:RequestHandler = async (req: Request, res: Response)=>
 
     // If the data is invalid
     if (error) {
-      res.status(400).json({ message: 'Validation failed', errors: error.details });
+      res.status(400).json({ message: 'Validation failed: '+error.details[0].message.replace(/\"/g, '') });
       return
     }
     // Reformat data 
@@ -122,7 +122,7 @@ export const loginUser:RequestHandler = async (req:Request,res:Response)=>{
     // I need to require the data from the user 
     const { error, value } = loginSchema.validate(req.body);
     if(error){
-      res.status(400).json({ message: 'Validation failed', errors: error.details });
+      res.status(400).json({ message: 'Validation failed: '+error.details[0].message.replace(/\"/g, '') });
         return
     } 
 
