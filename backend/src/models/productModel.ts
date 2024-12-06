@@ -30,11 +30,34 @@ const productSchema = new Schema<IProduct>({
 
 productSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.createdAt
-    delete ret.__v
     delete ret.updatedAt
+    delete ret.expiresAt
+    delete ret.__v
     return ret
 }});
 
+// removes expiry of product and sets its variants
+productSchema.statics.removeExpiry = async function(productId: IObjectId,variantIds:IObjectId[]): Promise<{ success: boolean, errorMessage: string }>{
+  try{
+    const product = await this.findById(productId)
+    if(!product){
+      return {success:false,errorMessage:"Product not found"}
+    }
+    if(!product.expiresAt){
+      return {success:false,errorMessage:"Product expiry is already cleared"}
+    }
+    product.expiresAt=undefined
+    product.variants=variantIds
+    await product.save()
+    return {success:true,errorMessage:""}
+  }catch(error:any){
+    console.log("remove expiry - "+error)
+    throw new Error('Error removing expirey: ' + error.message);
+  }
+
+}
+
+productSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 // Indexing
 productSchema.index({ category: 1 });  // category Indexing
 productSchema.index({ gender: 1 });    // gender Indexing
