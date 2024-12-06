@@ -119,6 +119,62 @@ export const addProduct:RequestHandler = async (req:AuthRequest,res:Response)=>{
     }
 } 
 
+export const addProductVariant:RequestHandler = async (req:AuthRequest,res:Response)=>{
+    try{
+        // get productId from params
+        const isValidProductId:boolean = Types.ObjectId.isValid(req.params.productId)
+        if(!isValidProductId){
+            res.status(404).json({message:"Invalid ProductId in URL"})
+            return
+        }
+        // get product details
+        const data:{variants:IProductVariant[]} =  req.body
+        // validate productDetails
+        const { error, value } = addProductVariantSchema.validate(data);
+        if(error){
+            console.log(error)
+            res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
+            return
+        }
+        // check if product exists and if it already has variants
+        const productId:IObjectId= new mongoose.Types.ObjectId(req.params.productId)
+        const product =await ProductModel.findById(productId)
+        if(!product){
+            res.status(404).json({message:"Product not found"})
+            return
+        }
+        if(product.variants.length>0){
+            res.status(400).json({message:"Product variants already exist"})
+            return
+        }
+        const variantIds:IObjectId[]= []
+        // add variants and check their images & remove their expiry (link them)
+        const addVariantError:string[]= []
+        for (let index = 0; index < data.variants.length; index++) {
+            const variant = data.variants[index];
+            const {success, productVariantId, errorMessage} = await ProductVariantModel.addVariant(variant);
+            if (!success) {
+                addVariantError.push(`Product addition at index ${index} failed, ( ${errorMessage} )`);
+            } else {
+                variantIds.push(productVariantId as IObjectId);
+            }
+        }
+        if(addVariantError.length>0){
+            res.status(400).json({message:"Invalid product:"+ addVariantError.join(", ")})
+            return 
+        }
+        // remove expiry and update product at once 
+        const {success,errorMessage}= await ProductModel.removeExpiry(productId,variantIds)
+        if(!success){
+            res.status(400).json({message:"Invalid product:"+ errorMessage})
+            return 
+        }
+        res.status(200).json({message:"Product variants added successfully"})
+    }catch(error){
+    console.log(error)
+    res.status(500).json({message:"Server Error"})
+    }
+}
 // Delete a product
 
 // Add Product Discount 
