@@ -14,8 +14,8 @@ export interface ICart extends Document {
 
 
 const cartSchema = new Schema<ICart>({
-    user:{type: mongoose.Schema.Types.ObjectId, ref: 'User',required:true},
-    products:[{productId:{type:mongoose.Schema.Types.ObjectId,ref:"Product",required:true},color:{type:String,required:true},quantity:[{quantity:{type:Number,required:true,min:[1,"Quantity must be at least 1"]},size:{type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]}}]
+    user:{type: Schema.Types.ObjectId, ref: 'User',required:true},
+    products:[{productId:{type:Schema.Types.ObjectId,ref:"Product",required:true},color:{type:String,required:true},quantity:[{quantity:{type:Number,required:true,min:[1,"Quantity must be at least 1"]},size:{type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]}}]
     }],
     totalPrice:{type:Schema.Types.Decimal128,default: 0.0,get:decimal128ToNumber, set: numberToDecimal128}
 });

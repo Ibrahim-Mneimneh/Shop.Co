@@ -36,9 +36,9 @@ const userSchema = new Schema<IUser>({
     address:{type:String,
     required:true},
     orders:[{
-        type: mongoose.Schema.Types.ObjectId, ref: 'Order'
+        type: Schema.Types.ObjectId, ref: 'Order'
     }],
-    cart:{type: mongoose.Schema.Types.ObjectId, ref: 'Cart'}
+    cart:{type: Schema.Types.ObjectId, ref: 'Cart'}
 });
 
 // Exclude password, passwordChagedAt, role, _id, cart, orders from responses
