@@ -175,6 +175,45 @@ export const addProductVariant:RequestHandler = async (req:AuthRequest,res:Respo
     res.status(500).json({message:"Server Error"})
     }
 }
+// Update or delete a Sale
+const updateSale = async (req:Request,res:Response)=>{
+    try{
+        const isValidProductId:boolean = Types.ObjectId.isValid(req.params.productId)
+        if(!isValidProductId){
+            res.status(404).json({message:"Invalid ProductId in URL"})
+            return
+        }
+        const productId:IObjectId= new mongoose.Types.ObjectId(req.params.productId)
+        // fetch for the product 
+        const product = await ProductVariantModel.findById(productId)
+        if(!product){
+            res.status(404).json({message:"Product not found"})
+            return
+        }
+        const data:{startDate:Date, endDate:Date, discountPercentage:number} =  req.body
+        // if there is no data its delete 
+        if(!data){
+            // if the product is on sale its then reset it
+            if(product.isOnSale){
+
+            }else{ // if its not then send its already set 
+
+            }
+        }else{ // Here we can put limits like cancellation
+            // ensure the data is in the right format
+            if(product.isOnSale){
+                // if the new endDate is larger than the old endDate we expand 
+                // if the new startDate is before the old startdate then set the one that is before 
+                // keep the ability to modify percentage  
+            }
+        }
+
+    }catch(error){
+        console.log(error)
+        res.status(500).json({message:"Server Error"})
+    }
+}
+
 // Delete a product
 
 // Add Product Discount 
