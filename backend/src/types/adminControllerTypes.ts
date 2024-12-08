@@ -42,7 +42,6 @@ export const isValidBase64 = (base64String:string):IIsValidBase64=>{
       const {width, height}:{width:number,height:number}=decodedDimension as {width:number,height:number}
 
       const aspectRatio = width/height
-      console.log(aspectRatio + "height is:" +height +"and width is "+width)
 
       const tolerance = 0.01; // 1% error 
 

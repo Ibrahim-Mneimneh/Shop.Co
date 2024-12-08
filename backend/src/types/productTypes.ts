@@ -11,7 +11,7 @@ const quantitySchema =Joi.object<IQuantity
     quantityLeft:Joi.number().integer().min(0).required()
 })
 
-const saleOptionsSchema = Joi.object({
+export const saleOptionsSchema = Joi.object({
     startDate:Joi.date().iso().greater("now").required().messages({
       "date.greater": "Sale start date must be in the future.",
       "date.base": "Sale start date must be a valid date.",
@@ -24,7 +24,7 @@ const saleOptionsSchema = Joi.object({
     "number.min": "Discount percentage must be at least 1%",
     "number.max": "Discount percentage cannot exceed 99%",
   })
-})
+}).options({ convert: true }); 
 
 export const variantSchema=Joi.object({
     color:Joi.string().pattern(/^#([0-9a-fA-F]{3}){1,2}$/).message('Invalid hex color'),
@@ -81,3 +81,4 @@ export const addProductVariantSchema=Joi.object({
       "array.min": "At least one product variant is required.",
     }),
 });
+
