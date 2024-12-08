@@ -11,7 +11,7 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import { IBase64Image, IIsValidBase64, isValidBase64 } from "../types/adminControllerTypes";
 import { ProductImageModel } from "../models/productImageModel";
 import { IProduct, ProductModel } from "../models/productModel";
-import { addProductSchema, addProductVariantSchema } from "../types/productTypes";
+import { addProductSchema, addProductVariantSchema, saleOptionsSchema } from "../types/productTypes";
 import { IProductVariant, ProductVariantModel } from "../models/productVariantModel";
 
 
@@ -176,38 +176,71 @@ export const addProductVariant:RequestHandler = async (req:AuthRequest,res:Respo
     }
 }
 // Update or delete a Sale
-const updateSale = async (req:Request,res:Response)=>{
+export const updateVariantSale = async (req:Request,res:Response)=>{
     try{
-        const isValidProductId:boolean = Types.ObjectId.isValid(req.params.productId)
-        if(!isValidProductId){
+        const isValidProductVarId:boolean = Types.ObjectId.isValid(req.params.variantId)
+        if(!isValidProductVarId){
             res.status(404).json({message:"Invalid ProductId in URL"})
             return
         }
-        const productId:IObjectId= new mongoose.Types.ObjectId(req.params.productId)
+        const productVarId:IObjectId= new mongoose.Types.ObjectId(req.params.variantId)
         // fetch for the product 
-        const product = await ProductVariantModel.findById(productId)
+        const product = await ProductVariantModel.findById(productVarId)
         if(!product){
             res.status(404).json({message:"Product not found"})
             return
         }
         const data:{startDate:Date, endDate:Date, discountPercentage:number} =  req.body
+
+
         // if there is no data its delete 
-        if(!data){
+        if(!data || Object.keys(data).length === 0){
+
             // if the product is on sale its then reset it
             if(product.isOnSale){
-
+                product.isOnSale=false
+                product.saleOptions=undefined
+                await product.save();
+                res.status(200).json({ message: "Sale deleted successfully" });
+                return 
             }else{ // if its not then send its already set 
-
+                res.status(400).json({message:"Validation failed: 'discountPercentage','startDate' and 'endDate' attributes are required to update sale"})
             }
-        }else{ // Here we can put limits like cancellation
+
+
+        }else{
             // ensure the data is in the right format
-            if(product.isOnSale){
-                // if the new endDate is larger than the old endDate we expand 
-                // if the new startDate is before the old startdate then set the one that is before 
+            const { error,value } = saleOptionsSchema.validate(data);
+            if(error){
+                res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
+                return
+            }
+            const {startDate,endDate,discountPercentage}=value
+            if(product.isOnSale && product.saleOptions){ // update the sale 
+                // if the new startDate is before the old startdate then set the one that is before
+                const currentSale = product.saleOptions;
+
+                const currentDate =new Date(Date.now())
+                if( startDate<product.saleOptions.startDate){
+                    currentSale.startDate=startDate
+                }
+                // if the new endDate is larger than the old endDate we expand
+                if( endDate>product.saleOptions.endDate ){
+                    currentSale.endDate=endDate
+                }
                 // keep the ability to modify percentage  
+                currentSale.discountPercentage=discountPercentage
+                await product.save()
+                res.status(200).json({message:"Sale updated successfully"})
+                return 
+            }else{ // start sale 
+                product.isOnSale=true
+                product.saleOptions={startDate,endDate,discountPercentage}
+                await product.save()
+                res.status(200).json({message:"Sale created successfully"})
+                return 
             }
         }
-
     }catch(error){
         console.log(error)
         res.status(500).json({message:"Server Error"})
