@@ -25,6 +25,13 @@ const ProductImageSchema = new Schema<IProductImage>({
     },message: "Cannot set expiration date for linked images",}}
 })
 
+ProductImageSchema.set("toJSON",{transform:(doc,ret)=>{
+    delete ret.createdAt
+    delete ret.updatedAt
+    delete ret.__v
+    return ret
+}});
+
 ProductImageSchema.statics.linkImages= async function(imageIds:IObjectId[]):Promise<{success:boolean,errorMessage:string}>{
     try{
         if(!imageIds || imageIds.length===0)
