@@ -1,5 +1,5 @@
 import mongoose,{ Document, Model, Schema,Types } from "mongoose";
-import { decimal128ToNumber, IObjectId, numberToDecimal128 } from "../types/modalTypes";
+import { IObjectId } from "../types/modalTypes";
 import { ProductImageModel } from "./productImageModel";
 import { console } from "inspector";
 
@@ -30,7 +30,8 @@ const productVariantSchema = new Schema<IProductVariant>({
         size: {type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]},
         quantityLeft: { type: Number, required: true, default: 0, min:[0,"Quantity cannot be negative"]}}],
     images: [{ type: Schema.Types.ObjectId,ref:"ProductImage"}],
-    originalPrice:{ type: Schema.Types.Decimal128,required: true,min: [0,"Price cannot be negative"],get:decimal128ToNumber, set: numberToDecimal128 },
+    color:{type:String,unique:true,required:true},
+    originalPrice:{ type: Number,required: true,min: [0,"Price cannot be negative"], },
             isOnSale: {type:Boolean,default:false},
             saleOptions: {type:{
                 startDate: { type: Schema.Types.Date, required: true },
@@ -45,6 +46,12 @@ const productVariantSchema = new Schema<IProductVariant>({
                 
 },{timestamps:true});
 
+productVariantSchema.set("toJSON",{transform:(doc,ret)=>{
+    delete ret.createdAt
+    delete ret.updatedAt
+    delete ret.__v
+    return ret
+}});
 
 productVariantSchema.statics.addVariant= async function(variant:IProductVariant):Promise<{success:boolean,productVariantId?:IObjectId,errorMessage:string}>{
   try{  

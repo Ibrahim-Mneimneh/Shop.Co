@@ -1,5 +1,6 @@
 import mongoose, {Document,Types,Schema, Model} from "mongoose"
 import { IObjectId } from "../types/modalTypes";
+import { IProductVariant, ProductVariantModel } from "./productVariantModel";
 
 export interface IProduct extends Document {
     _id:Types.ObjectId,
@@ -8,12 +9,13 @@ export interface IProduct extends Document {
     gender:String,
     category:String
     rating:Number,
-    variants:Types.ObjectId[],
+    variants:Types.ObjectId[] | IProductVariant[],
     expiresAt?:Date
 }
 
 export interface IProductModel extends Model<IProduct>{
-  removeExpiry(productId:IObjectId,variantIds:IObjectId[]):Promise<{success:boolean, errorMessage:string}>
+  removeExpiry(productId:IObjectId,variantIds:IObjectId[]):Promise<{success:boolean, errorMessage:string}>,
+  getVariants(productId: IObjectId): Promise<{ success: boolean, errorMessage: string, productVariant?:IProductVariant[],product?:IProduct }>
 }
 
 const productSchema = new Schema<IProduct>({
@@ -55,6 +57,27 @@ productSchema.statics.removeExpiry = async function(productId: IObjectId,variant
     throw new Error('Error removing expirey: ' + error.message);
   }
 
+}
+
+productSchema.statics.getVariants = async function(productId: IObjectId): Promise<{ success: boolean, errorMessage: string, product?:IProduct,productVariant?:IProductVariant[] }>{
+  try{
+    const product = await this.findById(productId)
+    if(!product){
+      return {success:false,errorMessage:"Product not found"}
+    }
+    if( product.variants.length===0){
+      return {success:false,errorMessage:"Product details aren't available at the time"}
+    }
+    const variants:IObjectId[]= product.variants
+    const productVariant = await ProductVariantModel.find({_id:{$in:variants}})
+    if(!productVariant){
+      return {success:false,errorMessage:"Failed to get variant details"}
+    }
+    return {success:true,errorMessage:"", product , productVariant:productVariant}
+  }catch(error:any){
+    console.log("remove expiry - "+error)
+    throw new Error('Error removing expirey: ' + error.message);
+  }
 }
 
 productSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
