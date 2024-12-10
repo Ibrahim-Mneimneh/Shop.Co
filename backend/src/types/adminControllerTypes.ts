@@ -53,4 +53,4 @@ export const isValidBase64 = (base64String:string):IIsValidBase64=>{
         console.log("Image Validity checing error - ")
         return {success:false, base64ErrorMessage:"Server error",content:"",type:""}
       }
-} 
+}

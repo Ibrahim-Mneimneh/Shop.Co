@@ -82,3 +82,17 @@ export const addProductVariantSchema=Joi.object({
     }),
 });
 
+export const updateQuantitySchema=Joi.object({
+  size:Joi.string().valid("XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size").required(),
+  quantity:Joi.number().integer().min(0).required()
+})
+
+export const updateQuantity =Joi.object({
+  quantity:Joi.array()
+    .items(updateQuantitySchema).min(1).required()
+    .messages({
+      "array.min": "At least one quantity should be added.",
+  }),
+  
+})
+
