@@ -82,17 +82,25 @@ export const addProductVariantSchema=Joi.object({
     }),
 });
 
-export const updateQuantitySchema=Joi.object({
+export const updateQuantityDetails=Joi.object({
   size:Joi.string().valid("XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size").required(),
   quantity:Joi.number().integer().min(0).required()
 })
 
-export const updateQuantity =Joi.object({
-  quantity:Joi.array()
-    .items(updateQuantitySchema).min(1).required()
-    .messages({
+export const updateQuantitySchema =Joi.object({
+  stock:Joi.array()
+      .items({
+    details:Joi.array()
+    .items(updateQuantityDetails).min(1).required()
+      .messages({
       "array.min": "At least one quantity should be added.",
-  }),
-  
-})
+      }),
+    variant:Joi.string().required().custom((value, helper) => {
+        if (!Types.ObjectId.isValid(value)) {
+            return helper.message({"any.invalid": "Variant must be a valid ObjectId."});
+        }
+          return value;
+        })
+}).min(1).required(),
 
+})
