@@ -11,7 +11,7 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import { IBase64Image, IIsValidBase64, isValidBase64 } from "../types/adminControllerTypes";
 import { ProductImageModel } from "../models/productImageModel";
 import { IProduct, ProductModel } from "../models/productModel";
-import { addProductSchema, addProductVariantSchema, saleOptionsSchema } from "../types/productTypes";
+import { addProductSchema, addProductVariantSchema, saleOptionsSchema, updateQuantitySchema } from "../types/productTypes";
 import { IProductVariant, ProductVariantModel } from "../models/productVariantModel";
 
 
@@ -119,6 +119,7 @@ export const addProduct:RequestHandler = async (req:AuthRequest,res:Response)=>{
     }
 } 
 
+// ***************************** UPDATE FOR LATER (works on products that exist too)
 export const addProductVariant:RequestHandler = async (req:AuthRequest,res:Response)=>{
     try{
         // get productId from params
@@ -132,7 +133,6 @@ export const addProductVariant:RequestHandler = async (req:AuthRequest,res:Respo
         // validate productDetails
         const { error, value } = addProductVariantSchema.validate(data);
         if(error){
-            console.log(error)
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
         }
@@ -247,14 +247,52 @@ export const updateVariantSale = async (req:Request,res:Response)=>{
     }
 }
 
+// Update Variant stock (Add items) {size, quantity}
+export const restockProduct = async (req:Request,res:Response)=>{
+    try{
+        // get product Id
+        const isValidProductId:boolean = Types.ObjectId.isValid(req.params.productId)
+        if(!isValidProductId){
+            res.status(404).json({message:"Invalid ProductId in URL"})
+            return
+        }
+        const productId:IObjectId= new mongoose.Types.ObjectId(req.params.productId)
+        // fetch for the product 
+        const product = await ProductModel.findById(productId)
+        if(!product){
+            res.status(404).json({message:"Product not found"})
+            return
+        }
+        const data:{stock:{variant:string,details:{size:string,quantity:number}[]}[]} =  req.body
+        // validate productDetails
+        const { error, value } = updateQuantitySchema.validate(data);
+        if(error){
+            res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
+            return
+        }
+        // ensure the variants belong to the same product
+        const stock:{variant:string | IObjectId,details:{size:string,quantity:number}[]}[]=value.stock
+        const variantIdError=stock.map((stockElement)=>{
+            const variantId:IObjectId= new mongoose.Types.ObjectId(stockElement.variant)
+            if(!product.variants.includes(variantId)){ //if it doesn't belongs to same product
+                return "Invalid product variant: "+ stockElement.variant 
+            }
+            stockElement.variant=variantId
+            return null
+        }).filter(errorMessage => errorMessage !== null)
+        if(variantIdError.length>0){
+            res.status(400).json({message:"Invalid product variants"})
+            return
+        }
+        
+        // make a function that takes an argument string of what to do and then it increments or decrements the variant (to be used when someone orders also but it compares the quantity to decrement to that left to ensure the order can be placed)
+    }catch(error){
+        console.log(error)
+        res.status(500).json({message:"Server Error"})
+    }
+} 
+
 // Delete a product
-
-// Add Product Discount 
-
-// Remove Discount 
-
-// Update product
-
 
 // View sales
 
@@ -262,4 +300,5 @@ export const updateVariantSale = async (req:Request,res:Response)=>{
 
 // Change order status
 
+// Get out of stock products
 
