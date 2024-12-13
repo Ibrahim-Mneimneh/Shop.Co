@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken"
 import { UserModel } from "../models/userModel";
 
@@ -13,7 +13,7 @@ export interface AuthRequest extends Request{
     role?:string
 }
 
-export const authMiddleware = async (req:AuthRequest,res:Response,next:Function)=>{
+export const authMiddleware = async (req:AuthRequest,res:Response,next:NextFunction)=>{
 try{
     const { authorization } = req.headers;
 
