@@ -94,5 +94,46 @@ productVariantSchema.statics.addVariant= async function(variant:IProductVariant)
   }
 }
 
+// Deals with updating quantity weather it is 
+productVariantSchema.statics.updateQuantity = async function(operation:"restock"|"buy",stock:{variant:IObjectId,details:{size:string,quantity:number}[]}[]):Promise<{success:boolean, errorMessage:string}>{
+  try{
+    // Check for the type of operation
+    if(operation==="restock"){
+      for (const element of stock){
+        const ElementOperations= element.details.map(detail=>{
+          const {size, quantity}= detail
+          return {
+            updateOne: {
+              filter:{_id:element.variant,'quantity.size':size},
+              update:{$inc:{'quantity.$.quantityLeft':quantity}},
+              upsert:true
+            }
+          }
+        });
+
+        // Update variant's quantity
+        const variantResult = await this.bulkWrite(ElementOperations)
+        if(variantResult.modifiedCount!==element.details.length){
+          return {success:false,errorMessage:"Product partially updated"} // left here 
+        }
+      }
+      return {success:true,errorMessage:""}
+    }else{
+      
+      
+      return {success:true,errorMessage:""}
+    }
+    // Depending on the type of operation we either add or subtract the quantity
+
+    // Case of restock we need to ensure that we use addition by updateBatch and ensure that all are updated, we send the update count if possible if not just add them up in the frontend
+    
+    // Case of buy we need to ensure that the number that the customer requires matches the one that is available (for looping) after which each one is valid we update them all 
+
+  }catch(error:any){
+    console.log("Add variant : "+error)
+    throw new Error('Error adding variant: ' + error.message);
+  }
+}
+
 export const ProductVariantModel =mongoose.model<IProductVariant
 ,IProductVariantModel>("ProductVariant",productVariantSchema);
