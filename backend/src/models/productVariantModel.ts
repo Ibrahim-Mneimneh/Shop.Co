@@ -1,7 +1,9 @@
-import mongoose,{ Document, Model, Schema,Types } from "mongoose";
+import mongoose,{ ClientSession, Document, Model, Schema,Types } from "mongoose";
 import { IObjectId } from "../types/modalTypes";
 import { ProductImageModel } from "./productImageModel";
 import { console } from "inspector";
+import { IProduct } from "./productModel";
+import { IUpdateStock } from "../types/adminControllerTypes";
 
 export interface IQuantity {
   size: string;
@@ -23,6 +25,7 @@ export interface IProductVariant extends Document{
 }
 interface IProductVariantModel extends Model<IProductVariant>{
   addVariant(variant:IProductVariant):Promise<{success:boolean,productVariantId?:IObjectId,errorMessage:string}>
+  updateQuantity(operation:"restock"|"buy",stock:IUpdateStock[] , session:ClientSession,product?:IProduct):Promise<{success:boolean, errorMessage:string,stock?:IUpdateStock[]}>
 }
 
 const productVariantSchema = new Schema<IProductVariant>({
@@ -95,7 +98,7 @@ productVariantSchema.statics.addVariant= async function(variant:IProductVariant)
 }
 
 // Deals with updating quantity weather it is 
-productVariantSchema.statics.updateQuantity = async function(operation:"restock"|"buy",stock:{variant:IObjectId,details:{size:string,quantity:number}[]}[]):Promise<{success:boolean, errorMessage:string}>{
+productVariantSchema.statics.updateQuantity = async function(operation:"restock"|"buy",stock:IUpdateStock[] , session:ClientSession,product?:IProduct):Promise<{success:boolean, errorMessage:string,stock?:IUpdateStock[]}>{
   try{
     // Check for the type of operation
     if(operation==="restock"){
@@ -112,25 +115,55 @@ productVariantSchema.statics.updateQuantity = async function(operation:"restock"
         });
 
         // Update variant's quantity
-        const variantResult = await this.bulkWrite(ElementOperations)
+        const variantResult = await this.bulkWrite(ElementOperations,{session})
         if(variantResult.modifiedCount!==element.details.length){
-          return {success:false,errorMessage:"Product partially updated"} // left here 
+          return {success:false,errorMessage:`${element.variant}`}
         }
       }
       return {success:true,errorMessage:""}
-    }else{
-      
-      
-      return {success:true,errorMessage:""}
-    }
-    // Depending on the type of operation we either add or subtract the quantity
 
-    // Case of restock we need to ensure that we use addition by updateBatch and ensure that all are updated, we send the update count if possible if not just add them up in the frontend
-    
-    // Case of buy we need to ensure that the number that the customer requires matches the one that is available (for looping) after which each one is valid we update them all 
+    }else{
+      for (const productVariant of stock){
+        const {details,variant,product} = productVariant
+        const elementOperations= []
+        for(const detail of details){
+          const {size, quantity}= detail
+          // Fetch the variant with each item 
+          const variantData: IProductVariant | null  = await this.findOne({_id:variant,'quantity.size':size})
+
+          // size isnt available 
+          if(!variantData){
+            detail.success=false
+            detail.message=`Out of Stock`
+            continue // move to next detail
+          } 
+          // get size details and check if the requested quantity is bigger than the 
+          const sizeDetail = variantData.quantity.find(q => q.size === size);
+          if(sizeDetail && sizeDetail.quantityLeft<quantity){
+            detail.success=false
+            detail.message=`Only ${sizeDetail.quantityLeft} left. Please reduce quantity.`
+            continue // move to next detail
+          }
+
+          elementOperations.push({
+            updateOne: {
+              filter:{_id:variant,'quantity.size':size},
+              update:{$dec:{'quantity.$.quantityLeft':quantity}},
+              upsert:false
+            }})
+        };
+
+        // Update variant's quantity if there is no error for a product 
+        const variantResult = await this.bulkWrite(elementOperations,{session})
+        if(variantResult.modifiedCount!==details.length){
+          return {success:false,errorMessage:`An error occured ${variant}`} // All changes will be reversed 
+        }
+      }
+      return {success:true,errorMessage:"",stock}
+    }
 
   }catch(error:any){
-    console.log("Add variant : "+error)
+    console.log(error)
     throw new Error('Error adding variant: ' + error.message);
   }
 }
