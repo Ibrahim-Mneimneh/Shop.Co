@@ -103,16 +103,24 @@ productVariantSchema.statics.updateQuantity = async function(operation:"restock"
     // Check for the type of operation
     if(operation==="restock"){
       for (const element of stock){
-        const ElementOperations= element.details.map(detail=>{
+        const ElementOperations= await Promise.all(element.details.map( async (detail)=>{
           const {size, quantity}= detail
+          const sizeExists = await this.exists({ _id: element.variant, 'quantity.size': size })
+          if(!sizeExists){
+            return {updateOne:{
+              filter:{_id:element.variant},
+              update:{$push:{'quantity':{quantityLeft:quantity,size}}},
+              upsert:false
+            }}
+          }
           return {
             updateOne: {
               filter:{_id:element.variant,'quantity.size':size},
               update:{$inc:{'quantity.$.quantityLeft':quantity}},
-              upsert:true
+              upsert:false
             }
           }
-        });
+        }));
 
         // Update variant's quantity
         const variantResult = await this.bulkWrite(ElementOperations,{session})
