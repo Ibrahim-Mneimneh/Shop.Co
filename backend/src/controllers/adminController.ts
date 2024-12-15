@@ -8,11 +8,12 @@ import { UserModel } from "../models/userModel";
 import { jwtGenerator } from "./authController";
 import { IObjectId } from "../types/modalTypes";
 import { AuthRequest } from "../middleware/authMiddleware";
-import { IBase64Image, IIsValidBase64, isValidBase64 } from "../types/adminControllerTypes";
+import { IBase64Image, IIsValidBase64, isValidBase64, IUpdateStock } from "../types/adminControllerTypes";
 import { ProductImageModel } from "../models/productImageModel";
 import { IProduct, ProductModel } from "../models/productModel";
 import { addProductSchema, addProductVariantSchema, saleOptionsSchema, updateQuantitySchema } from "../types/productTypes";
 import { IProductVariant, ProductVariantModel } from "../models/productVariantModel";
+import { DbSessionRequest } from "../middleware/sessionMiddleware";
 
 
 // Admin login
@@ -248,7 +249,7 @@ export const updateVariantSale = async (req:Request,res:Response)=>{
 }
 
 // Update Variant stock (Add items) {size, quantity}
-export const restockProduct = async (req:Request,res:Response)=>{
+export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
     try{
         // get product Id
         const isValidProductId:boolean = Types.ObjectId.isValid(req.params.productId)
@@ -270,27 +271,31 @@ export const restockProduct = async (req:Request,res:Response)=>{
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
         }
-        // ensure the variants belong to the same product
-        const stock:{variant:string | IObjectId,details:{size:string,quantity:number}[]}[]=value.stock
+        // ensure the variants belong to the same product & change type
+        const stock:IUpdateStock[]=value.stock
         const variantIdError=stock.map((stockElement)=>{
             const variantId:IObjectId= new mongoose.Types.ObjectId(stockElement.variant)
             if(!product.variants.includes(variantId)){ //if it doesn't belongs to same product
-                return "Invalid product variant: "+ stockElement.variant 
+                return `Invalid product variant: ${stockElement.variant}` 
             }
-            stockElement.variant=variantId
+            stockElement.variant=variantId // update to objectId
             return null
         }).filter(errorMessage => errorMessage !== null)
         if(variantIdError.length>0){
             res.status(400).json({message:"Invalid product variants"})
             return
         }
-        
-        // make a function that takes an argument string of what to do and then it increments or decrements the variant (to be used when someone orders also but it compares the quantity to decrement to that left to ensure the order can be placed)
+        const {success,errorMessage}= await ProductVariantModel.updateQuantity("restock",stock,req.dbSession as mongoose.ClientSession)
+        if(!success){
+            res.status(400).json({message:`Failed to restock '${product.name}' of id: ${errorMessage}`})
+            return
+        }
+        res.status(200).json({message:"Product successfully restocked"})
     }catch(error){
         console.log(error)
         res.status(500).json({message:"Server Error"})
     }
-} 
+}
 
 // Delete a product
 
