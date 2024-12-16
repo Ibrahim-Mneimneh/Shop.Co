@@ -1,33 +1,35 @@
 import mongoose, {Document,Types,Schema, Model} from "mongoose"
-import { IObjectId } from "../types/modalTypes";
+import { ClientSession, IObjectId } from "../types/modalTypes";
 import { IProductVariant, ProductVariantModel } from "./productVariantModel";
 
 export interface IProduct extends Document {
     _id:Types.ObjectId,
     name:string,
     description:string,
-    gender:String,
-    category:String
+    gender:"Men"|"Women"|"Unisex"|"Kids",
+    category:"Jackets"|"Pullover"|"Suits"|"Pants"|"T-Shirts"|"Accessories",
     rating:Number,
-    variants:Types.ObjectId[] | IProductVariant[],
-    expiresAt?:Date
+    variants:Types.ObjectId[],
+    expiresAt?:Date,
+    status: "Active" | "Inactive" | "Draft"
 }
 
 export interface IProductModel extends Model<IProduct>{
-  removeExpiry(productId:IObjectId,variantIds:IObjectId[]):Promise<{success:boolean, errorMessage:string}>,
+  removeExpiry(productId:IObjectId,variantIds:IObjectId[],session:ClientSession):Promise<{success:boolean, errorMessage:string}>,
   getVariants(productId: IObjectId): Promise<{ success: boolean, errorMessage: string, productVariant?:IProductVariant[],product?:IProduct }>
 }
 
 const productSchema = new Schema<IProduct>({
     name:{type:String,required:true},
     description:{type:String, maxlength:600,required:true},
-    gender:{type:String,enum:["Male","Female","Unisex"],required:true},
+    gender:{type:String,enum:["Men","Women","Unisex","Kids"],required:true},
     category:{type:String,enum:["Jackets","Pullover","Suits","Pants","T-Shirts","Accessories"],required:true},
     rating:{type:Number,default:0.0,min:0.0,max:5.0},
     variants:[{type:Schema.ObjectId,ref:"ProductVariant"}],
     expiresAt:{type:Date,default: new Date(Date.now() + 15 * 60 * 1000),validate:{validator: function(value:Date){
         return this.variants && value
-    },message: "Cannot set expiration date for linked products",}}
+    },message: "Cannot set expiration date for linked products",}},
+    status:{type:String, enum:["Active","Inactive","Draft"],default:"Draft"}
 },{timestamps:true});
 
 productSchema.set("toJSON",{transform:(doc,ret)=>{
@@ -39,7 +41,7 @@ productSchema.set("toJSON",{transform:(doc,ret)=>{
 }});
 
 // removes expiry of product and sets its variants
-productSchema.statics.removeExpiry = async function(productId: IObjectId,variantIds:IObjectId[]): Promise<{ success: boolean, errorMessage: string }>{
+productSchema.statics.removeExpiry = async function(productId: IObjectId,variantIds:IObjectId[],session:ClientSession): Promise<{ success: boolean, errorMessage: string }>{
   try{
     const product = await this.findById(productId)
     if(!product){
@@ -50,7 +52,8 @@ productSchema.statics.removeExpiry = async function(productId: IObjectId,variant
     }
     product.expiresAt=undefined
     product.variants=variantIds
-    await product.save()
+    product.status="Active"
+    await product.save({session})
     return {success:true,errorMessage:""}
   }catch(error:any){
     console.log("remove expiry - "+error)
