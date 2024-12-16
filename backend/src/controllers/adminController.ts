@@ -295,6 +295,48 @@ export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
     }
 }
 
+// Delete a product
+export const deleteProduct = async (req:DbSessionRequest, res:Response)=>{
+    try{
+        const { error } = deleteProductQuerySchema.validate(req.query);
+        if (error) {
+            res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
+            return
+        }
+        // Get validated query parameters
+        const { clearStock = 'false' } = req.query;
+        const session =req.dbSession as ClientSession 
+        const productIdString:string=req.params.productId
+        // get product Id
+        const isValidProductId:boolean = Types.ObjectId.isValid(productIdString)
+        if(!isValidProductId){
+            res.status(404).json({message:"Invalid ProductId in URL"})
+            return
+        }
+        const productId:IObjectId= new mongoose.Types.ObjectId(productIdString)
+        // soft delete for the product 
+        const updatedProduct = await ProductModel.findByIdAndUpdate(productId,{$set:{status:"Inactive"}},{new:true,session})
+        if(!updatedProduct){
+            res.status(404).json({message:"Product not found"})
+            return
+        }
+        const updateObj:{status:string,quantity?:IQuantity[],stockStatus?:string} ={status: "Inactive"}
+        if(clearStock==="true"){
+            updateObj.quantity=[]
+            updateObj.stockStatus="Out of stock"
+        }
+        //update its variants' status and reset their quantity 
+        const updatedVariants = await ProductVariantModel.updateMany({_id:{$in:updatedProduct.variants}},{ $set: updateObj },{session})
+        if(!updatedVariants){
+            res.status(400).json({message:"Failed to delete product"})
+            return
+        }
+        res.status(200).json({message:"Product deleted successfully"})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({message:"Server Error"})
+    }
+}
 
 // Delete a variant 
 
