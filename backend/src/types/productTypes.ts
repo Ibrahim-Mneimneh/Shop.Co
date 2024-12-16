@@ -54,8 +54,8 @@ export const addProductSchema = Joi.object<IProduct>({
   description: Joi.string().max(600).required().messages({
     "string.max": "Description cannot exceed 600 characters.",
   }),
-  gender: Joi.string().valid("Male", "Female", "Unisex").required().messages({
-    "string.base": "Gender must be one of: Male, Female, or Unisex.",
+  gender: Joi.string().valid("Men", "Women", "Unisex","Kids").required().messages({
+    "string.base": "Gender must be one of: Male, Female, Kids or Unisex.",
   }),
   category: Joi.string()
     .valid(
@@ -104,3 +104,7 @@ export const updateQuantitySchema =Joi.object({
 }).min(1).required(),
 
 })
+
+export const deleteProductQuerySchema = Joi.object({
+  clearStock: Joi.string().valid('true', 'false').optional().trim().lowercase(),
+});
