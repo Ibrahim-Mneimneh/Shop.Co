@@ -9,7 +9,7 @@ export interface IQuantity {
   size: string;
   quantityLeft: number;
 }
-
+// Many attributes can be further introduced such as dimension (measurements), cost (initial), other currency, fixed sale number (not percentage), and count for purchase or rating ;)
 export interface IProductVariant extends Document{
   _id:Types.ObjectId,
   color:string,
@@ -21,10 +21,13 @@ export interface IProductVariant extends Document{
     startDate: Date;
     endDate: Date;
     discountPercentage: number;
-    }
+  }
+  status: "Active" | "Inactive"
+  stockStatus:"In Stock" | "Out of Stock"
+  product:Types.ObjectId;
 }
 interface IProductVariantModel extends Model<IProductVariant>{
-  addVariant(variant:IProductVariant):Promise<{success:boolean,productVariantId?:IObjectId,errorMessage:string}>
+  addVariant(variant:IProductVariant,product:IObjectId,session:ClientSession):Promise<{success:boolean,productVariantId?:IObjectId,errorMessage:string}>
   updateQuantity(operation:"restock"|"buy",stock:IUpdateStock[] , session:ClientSession,product?:IProduct):Promise<{success:boolean, errorMessage:string,stock?:IUpdateStock[]}>
 }
 
@@ -33,7 +36,7 @@ const productVariantSchema = new Schema<IProductVariant>({
         size: {type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]},
         quantityLeft: { type: Number, required: true, default: 0, min:[0,"Quantity cannot be negative"]}}],
     images: [{ type: Schema.Types.ObjectId,ref:"ProductImage"}],
-    color:{type:String,unique:true,required:true},
+    color:{type:String,required:true},
     originalPrice:{ type: Number,required: true,min: [0,"Price cannot be negative"], },
             isOnSale: {type:Boolean,default:false},
             saleOptions: {type:{
@@ -45,28 +48,30 @@ const productVariantSchema = new Schema<IProductVariant>({
                     }
                     return !this.saleOptions;
                     },
-                    message: "saleOptions must have valid dates when isOnSale is true.",},}
-                
+                    message: "saleOptions must have valid dates when isOnSale is true.",},},
+  status: {type:String, enum:["Active", "Inactive"],default:"Active"},
+  stockStatus:{type:String, enum:["In Stock","Out of Stock"],default:"Out of Stock"},
+  product:{type:Schema.Types.ObjectId,ref:"Product",required:true}             
 },{timestamps:true});
 
 productVariantSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.createdAt
     delete ret.updatedAt
+    delete ret.status
     delete ret.__v
     return ret
 }});
 
-productVariantSchema.statics.addVariant= async function(variant:IProductVariant):Promise<{success:boolean,productVariantId?:IObjectId,errorMessage:string}>{
+productVariantSchema.statics.addVariant= async function(variant:IProductVariant,productId:IObjectId,session:ClientSession):Promise<{success:boolean,productVariantId?:IObjectId,errorMessage:string}>{
   try{  
     // convert imageIds to ObjectId exclude duplicate images from linking
     const imageIds:IObjectId[]=[...new Set(variant.images)].map(imageId=>(new Types.ObjectId(imageId)))
-    console.log("FilteredImages:" +imageIds)
     // Check images first
     let imageIdsToLink:IObjectId[]=[] 
     const variantImageError = (await Promise.all(imageIds.map( async (imageId,index)=>{
       const imageData = await ProductImageModel.findById(imageId)
       if(!imageData){
-        return `Image at index ${index} is invalid`
+        return `Image at index: ${index} not found`
       }
       if(imageData && !imageData.isLinked){
         imageIdsToLink.push(imageId) 
@@ -76,15 +81,16 @@ productVariantSchema.statics.addVariant= async function(variant:IProductVariant)
     if(variantImageError.length>0){
       return {success:false,errorMessage:variantImageError.join(", ")}
     }
-    // Add product variant 
-    const productVariant:IProductVariant = await this.create(variant)
+    // Add product variant & productId
+    variant.product=productId
+    const productVariant:IProductVariant= await new this(variant).save({session})
     if(!productVariant){
       return {success:false,errorMessage:"Failed to add product variant"}
     }
 
     // link images if needed
     if(imageIdsToLink && imageIdsToLink.length>0){
-      const linkedImage:{success:boolean,errorMessage:string}= await ProductImageModel.linkImages(imageIdsToLink)
+      const linkedImage:{success:boolean,errorMessage:string}= await ProductImageModel.linkImages(imageIdsToLink,session)
       if(!linkedImage.success){
         return {success:false,errorMessage:linkedImage.errorMessage}
       }
