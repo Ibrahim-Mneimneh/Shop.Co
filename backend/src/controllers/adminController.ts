@@ -6,13 +6,13 @@ import mongoose, { Types } from "mongoose";
 import { loginSchema } from "./userController";
 import { UserModel } from "../models/userModel";
 import { jwtGenerator } from "./authController";
-import { IObjectId } from "../types/modalTypes";
+import { ClientSession, IObjectId } from "../types/modalTypes";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { IBase64Image, IIsValidBase64, isValidBase64, IUpdateStock } from "../types/adminControllerTypes";
 import { ProductImageModel } from "../models/productImageModel";
 import { IProduct, ProductModel } from "../models/productModel";
-import { addProductSchema, addProductVariantSchema, saleOptionsSchema, updateQuantitySchema } from "../types/productTypes";
-import { IProductVariant, ProductVariantModel } from "../models/productVariantModel";
+import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, saleOptionsSchema, updateQuantitySchema } from "../types/productTypes";
+import { IProductVariant, IQuantity, ProductVariantModel } from "../models/productVariantModel";
 import { DbSessionRequest } from "../middleware/sessionMiddleware";
 
 
@@ -51,7 +51,7 @@ export const adminLogin:RequestHandler = async (req:Request,res:Response)=>{
 } 
 
 // Upload ProductImages
-export const addProductImage:RequestHandler = async (req:AuthRequest,res:Response)=>{
+export const addProductImage:RequestHandler = async (req:DbSessionRequest,res:Response)=>{
     try{
         const {base64Images}:{base64Images:string[]} = req.body
         // not empty and array 
@@ -82,7 +82,7 @@ export const addProductImage:RequestHandler = async (req:AuthRequest,res:Respons
             return 
         }
         // save images
-        const {success,imageIds,errorMessage}:{success:boolean,imageIds:string[],errorMessage:string} = await ProductImageModel.saveBatch(base64ImageData)
+        const {success,imageIds,errorMessage}:{success:boolean,imageIds:string[],errorMessage:string} = await ProductImageModel.saveBatch(base64ImageData,req.dbSession as ClientSession)
         if(!success){
             res.status(400).json({message:errorMessage})
             return
@@ -106,22 +106,21 @@ export const addProduct:RequestHandler = async (req:AuthRequest,res:Response)=>{
             res.status(400).json({ message: 'Validation failed: '+ error.details[0].message.replace(/\"/g, '') });
             return
         }
-        const {name, description,gender,category}=productDetails
+        const {name, description,gender,category}=value
         const product = await ProductModel.create({name,description,gender,category})
         if(!product){
             res.status(400).json({message:"Failed to add product"})
             return
         }
-        // add variants
         res.status(200).json({message:"Product added successfully", data:product})
     }catch(error){
-    console.log(error)
-    res.status(500).json({message:"Server Error"})
+        console.log(error)
+        res.status(500).json({message:"Server Error"})
     }
 } 
 
 // ***************************** UPDATE FOR LATER (works on products that exist too)
-export const addProductVariant:RequestHandler = async (req:AuthRequest,res:Response)=>{
+export const addProductVariant:RequestHandler = async (req:DbSessionRequest,res:Response)=>{
     try{
         // get productId from params
         const isValidProductId:boolean = Types.ObjectId.isValid(req.params.productId)
@@ -144,28 +143,28 @@ export const addProductVariant:RequestHandler = async (req:AuthRequest,res:Respo
             res.status(404).json({message:"Product not found"})
             return
         }
-        if(product.variants.length>0){
+        if(product.status==="Active"){
             res.status(400).json({message:"Product variants already exist"})
-            return
+            return // ********** Add here
         }
         const variantIds:IObjectId[]= []
         // add variants and check their images & remove their expiry (link them)
         const addVariantError:string[]= []
-        for (let index = 0; index < data.variants.length; index++) {
-            const variant = data.variants[index];
-            const {success, productVariantId, errorMessage} = await ProductVariantModel.addVariant(variant);
+        for (let index = 0; index < value.variants.length; index++) {
+            const variant = value.variants[index];
+            const {success, productVariantId, errorMessage} = await ProductVariantModel.addVariant(variant,productId,req.dbSession as ClientSession);
             if (!success) {
-                addVariantError.push(`Product addition at index ${index} failed, ( ${errorMessage} )`);
+                addVariantError.push(`Product variant at index: ${index} addition failed ( ${errorMessage} )`);
             } else {
                 variantIds.push(productVariantId as IObjectId);
             }
         }
         if(addVariantError.length>0){
-            res.status(400).json({message:"Invalid product:"+ addVariantError.join(", ")})
+            res.status(400).json({message:"Invalid Product: "+ addVariantError.join(", ")})
             return 
         }
         // remove expiry and update product at once 
-        const {success,errorMessage}= await ProductModel.removeExpiry(productId,variantIds)
+        const {success,errorMessage}= await ProductModel.removeExpiry(productId,variantIds,req.dbSession as ClientSession)
         if(!success){
             res.status(400).json({message:"Invalid product:"+ errorMessage})
             return 
@@ -220,8 +219,7 @@ export const updateVariantSale = async (req:Request,res:Response)=>{
             if(product.isOnSale && product.saleOptions){ // update the sale 
                 // if the new startDate is before the old startdate then set the one that is before
                 const currentSale = product.saleOptions;
-
-                const currentDate =new Date(Date.now())
+                // Joi checks that its > current time 
                 if( startDate<product.saleOptions.startDate){
                     currentSale.startDate=startDate
                 }
@@ -297,7 +295,8 @@ export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
     }
 }
 
-// Delete a product
+
+// Delete a variant 
 
 // View sales
 
