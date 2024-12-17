@@ -3,7 +3,15 @@ import Joi from "joi"
 
 import { IProduct } from "../models/productModel"
 import { IQuantity } from "../models/productVariantModel"
-import { Types } from "mongoose"
+import mongoose,{ Types } from "mongoose"
+
+
+export const validParamsIdSchema = Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message('Invalid Id format').required().custom((value:string, helpers) => {
+  if (!Types.ObjectId.isValid(value)) {
+      return helpers.message({"any.invalid": "Invalid Id."});
+    }
+    return new mongoose.Types.ObjectId(value)
+  })
 
 const quantitySchema =Joi.object<IQuantity
 >({
@@ -31,9 +39,9 @@ export const variantSchema=Joi.object({
     quantity: Joi.array().items(quantitySchema).min(1).required(),
     images: Joi.array()
       .items(
-        Joi.string().required().custom((value, helper) => {
+        Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message('Invalid Id format').required().custom((value, helpers) => {
           if (!Types.ObjectId.isValid(value)) {
-            return helper.message({"any.invalid": "Image must be a valid ObjectId."});
+            return helpers.message({"any.invalid": "Image must be a valid ObjectId."});
           }
           return value;
         })
@@ -80,6 +88,7 @@ export const addProductVariantSchema=Joi.object({
     .messages({
       "array.min": "At least one product variant is required.",
     }),
+    productId:validParamsIdSchema
 });
 
 export const updateQuantityDetails=Joi.object({
@@ -88,23 +97,58 @@ export const updateQuantityDetails=Joi.object({
 })
 
 export const updateQuantitySchema =Joi.object({
-  stock:Joi.array()
-      .items({
+  stock:Joi.array().items({
     details:Joi.array()
     .items(updateQuantityDetails).min(1).required()
       .messages({
       "array.min": "At least one quantity should be added.",
       }),
-    variant:Joi.string().required().custom((value, helper) => {
-        if (!Types.ObjectId.isValid(value)) {
-            return helper.message({"any.invalid": "Variant must be a valid ObjectId."});
-        }
-          return value;
-        })
-}).min(1).required(),
-
+    variant:validParamsIdSchema
+  }).min(1).required(),
+  productId: validParamsIdSchema
 })
 
 export const deleteProductQuerySchema = Joi.object({
-  clearStock: Joi.string().valid('true', 'false').optional().trim().lowercase(),
+  productId:validParamsIdSchema,
+  clearStock: Joi.string().valid('true', 'false').optional().trim().lowercase().messages({
+      "string.base": "Attribute clearStock must be a string ('true' or 'false').",
+      "any.only": "Attribute clearStock can only be 'true' or 'false'.",
+    }),
 });
+
+export const updateVariantSaleSchema= Joi.object({
+  saleOptions:Joi.object({
+    startDate: Joi.date()
+      .iso()
+      .greater("now")
+      .optional()
+      .messages({
+        "date.greater": "Sale start date must be in the future.",
+        "date.base": "Sale start date must be a valid date.",
+      }),
+    endDate: Joi.date()
+      .iso()
+      .optional()
+      .messages({
+        "date.greater": "Sale end date must be after the start date.",
+        "date.base": "Sale end date must be a valid date.",
+      })
+      .when("startDate", {
+        is: Joi.exist(),
+        then: Joi.date().greater(Joi.ref("startDate")).required().messages({
+          "any.required": "Sale end date is required when start date is provided.",
+        }),
+      }),
+    
+    discountPercentage: Joi.number()
+      .min(1)
+      .max(99)
+      .optional()
+      .messages({
+        "number.min": "Discount percentage must be at least 1%.",
+        "number.max": "Discount percentage cannot exceed 99%.",
+      })
+  }).optional(),
+  productVarId:validParamsIdSchema
+})
+.options({ convert: true });
