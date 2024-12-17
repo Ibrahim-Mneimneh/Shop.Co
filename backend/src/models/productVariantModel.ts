@@ -9,6 +9,11 @@ export interface IQuantity {
   size: string;
   quantityLeft: number;
 }
+export interface ISaleOptions{
+    startDate: Date;
+    endDate: Date;
+    discountPercentage: number;
+}
 // Many attributes can be further introduced such as dimension (measurements), cost (initial), other currency, fixed sale number (not percentage), and count for purchase or rating ;)
 export interface IProductVariant extends Document{
   _id:Types.ObjectId,
@@ -17,11 +22,7 @@ export interface IProductVariant extends Document{
   images: Types.ObjectId[];
   originalPrice: Number;
   isOnSale: boolean;
-  saleOptions?: {
-    startDate: Date;
-    endDate: Date;
-    discountPercentage: number;
-  }
+  saleOptions?: ISaleOptions
   status: "Active" | "Inactive"
   stockStatus:"In Stock" | "Out of Stock"
   product:Types.ObjectId;

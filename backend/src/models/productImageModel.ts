@@ -1,5 +1,5 @@
 import mongoose,{Document,Model,Schema,Types} from "mongoose";
-import { IObjectId } from "../types/modalTypes";
+import { ClientSession, IObjectId } from "../types/modalTypes";
 import { IBase64Image } from "../types/adminControllerTypes";
 
 export interface IProductImage extends Document{
@@ -12,8 +12,8 @@ export interface IProductImage extends Document{
 
 
 interface IProductImageModel extends Model<IProductImage> {
-  linkImages(images: IObjectId[]): Promise<{success:boolean,errorMessage:string}>;
-  saveBatch(base64Images:IBase64Image[]):Promise<{success: boolean,imageIds:string[],errorMessage:string}>
+  linkImages(images: IObjectId[],session:ClientSession): Promise<{success:boolean,errorMessage:string}>;
+  saveBatch(base64Images:IBase64Image[],session:ClientSession):Promise<{success: boolean,imageIds:string[],errorMessage:string}>
 }
 
 const ProductImageSchema = new Schema<IProductImage>({
@@ -32,7 +32,7 @@ ProductImageSchema.set("toJSON",{transform:(doc,ret)=>{
     return ret
 }});
 
-ProductImageSchema.statics.linkImages= async function(imageIds:IObjectId[]):Promise<{success:boolean,errorMessage:string}>{
+ProductImageSchema.statics.linkImages= async function(imageIds:IObjectId[],session:mongoose.ClientSession):Promise<{success:boolean,errorMessage:string,}>{
     try{
         if(!imageIds || imageIds.length===0)
             return {success:false,errorMessage:"Failed to link images: No images selected."}
@@ -45,7 +45,7 @@ ProductImageSchema.statics.linkImages= async function(imageIds:IObjectId[]):Prom
             }}
         ))
         // Update multiple images
-        const result = await this.bulkWrite(operations)
+        const result = await this.bulkWrite(operations,{session})
         if (!result) {
             return {success:false,errorMessage:"Failed to link images: No images were updated."};
         }
@@ -53,7 +53,7 @@ ProductImageSchema.statics.linkImages= async function(imageIds:IObjectId[]):Prom
         // Handle partial success
         if (result.modifiedCount < imageIds.length) {
             const failedCount = imageIds.length - result.modifiedCount;
-            return {success:false, errorMessage:`Partially linked images: ${failedCount} images failed to update.`};
+            return {success:false, errorMessage:`Try again: Failed to link ${failedCount} images`};
         }
         return {success:true,errorMessage:""}
     }
@@ -63,14 +63,14 @@ ProductImageSchema.statics.linkImages= async function(imageIds:IObjectId[]):Prom
     }
 }
 
-ProductImageSchema.statics.saveBatch= async function(base64Images:IBase64Image[]):Promise<{success: boolean,imageIds:string[],errorMessage:string}>{
+ProductImageSchema.statics.saveBatch= async function(base64Images:IBase64Image[],session:ClientSession):Promise<{success: boolean,imageIds:string[],errorMessage:string}>{
     try{
         const operations = base64Images.map((base64Image) => ({
         insertOne: {
             document: { image:base64Image.content,type:base64Image.type }
         }
         }));
-        const result = await this.bulkWrite(operations);
+        const result = await this.bulkWrite(operations,{session});
         if(!result){
             return {success:false,imageIds:[],errorMessage:"Failed to save images"}
         }
