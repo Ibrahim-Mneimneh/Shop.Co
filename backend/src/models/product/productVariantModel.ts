@@ -1,9 +1,9 @@
 import mongoose,{ ClientSession, Document, Model, Schema,Types } from "mongoose";
-import { IObjectId } from "../types/modalTypes";
-import { ProductImageModel } from "./productImageModel";
+import { IObjectId } from "../../types/modalTypes";
+import { ProductImageModel } from "../product/productImageModel";
 import { console } from "inspector";
 import { IProduct } from "./productModel";
-import { IUpdateStock } from "../types/adminControllerTypes";
+import { IUpdateStock } from "../../types/adminControllerTypes";
 
 export interface IQuantity {
   size: string;
@@ -51,7 +51,7 @@ const productVariantSchema = new Schema<IProductVariant>({
                     },
                     message: "saleOptions must have valid dates when isOnSale is true.",},},
   status: {type:String, enum:["Active", "Inactive"],default:"Active"},
-  stockStatus:{type:String, enum:["In Stock","Out of Stock"],default:"Out of Stock"},
+  stockStatus:{type:String, enum:["In Stock","Out of Stock"],default:"In Stock"},
   product:{type:Schema.Types.ObjectId,ref:"Product",required:true}             
 },{timestamps:true});
 

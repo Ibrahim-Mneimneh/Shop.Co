@@ -1,6 +1,6 @@
 import mongoose,{Document,Model,Schema,Types} from "mongoose";
-import { ClientSession, IObjectId } from "../types/modalTypes";
-import { IBase64Image } from "../types/adminControllerTypes";
+import { ClientSession, IObjectId } from "../../types/modalTypes";
+import { IBase64Image } from "../../types/adminControllerTypes";
 
 export interface IProductImage extends Document{
     _id:Types.ObjectId,
