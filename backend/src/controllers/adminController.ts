@@ -9,10 +9,10 @@ import { jwtGenerator } from "./authController";
 import { ClientSession, IObjectId } from "../types/modalTypes";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { IBase64Image, IIsValidBase64, isValidBase64, IUpdateStock } from "../types/adminControllerTypes";
-import { ProductImageModel } from "../models/productImageModel";
-import { IProduct, ProductModel } from "../models/productModel";
-import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, saleOptionsSchema, updateQuantitySchema } from "../types/productTypes";
-import { IProductVariant, IQuantity, ProductVariantModel } from "../models/productVariantModel";
+import { ProductImageModel } from "../models/product/productImageModel";
+import { IProduct, ProductModel } from "../models/product/productModel";
+import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, saleOptionsSchema, updateQuantitySchema, updateVariantSaleSchema, validParamsIdSchema } from "../types/productTypes";
+import { IProductVariant, IQuantity, ProductVariantModel } from "../models/product/productVariantModel";
 import { DbSessionRequest } from "../middleware/sessionMiddleware";
 
 
@@ -122,22 +122,16 @@ export const addProduct:RequestHandler = async (req:AuthRequest,res:Response)=>{
 // ***************************** UPDATE FOR LATER (works on products that exist too)
 export const addProductVariant:RequestHandler = async (req:DbSessionRequest,res:Response)=>{
     try{
-        // get productId from params
-        const isValidProductId:boolean = Types.ObjectId.isValid(req.params.productId)
-        if(!isValidProductId){
-            res.status(404).json({message:"Invalid ProductId in URL"})
-            return
-        }
         // get product details
-        const data:{variants:IProductVariant[]} =  req.body
+        const data:{variants:IProductVariant[],productId:string} =  {variants:req.body.variants,productId:req.params.productId}
         // validate productDetails
         const { error, value } = addProductVariantSchema.validate(data);
         if(error){
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
         }
+        const {productId,variants}:{productId:IObjectId,variants:IProductVariant[]}=value
         // check if product exists and if it already has variants
-        const productId:IObjectId= new mongoose.Types.ObjectId(req.params.productId)
         const product =await ProductModel.findById(productId)
         if(!product){
             res.status(404).json({message:"Product not found"})
@@ -150,8 +144,8 @@ export const addProductVariant:RequestHandler = async (req:DbSessionRequest,res:
         const variantIds:IObjectId[]= []
         // add variants and check their images & remove their expiry (link them)
         const addVariantError:string[]= []
-        for (let index = 0; index < value.variants.length; index++) {
-            const variant = value.variants[index];
+        for (let index = 0; index < variants.length; index++) {
+            const variant = variants[index];
             const {success, productVariantId, errorMessage} = await ProductVariantModel.addVariant(variant,productId,req.dbSession as ClientSession);
             if (!success) {
                 addVariantError.push(`Product variant at index: ${index} addition failed ( ${errorMessage} )`);
@@ -175,71 +169,65 @@ export const addProductVariant:RequestHandler = async (req:DbSessionRequest,res:
     res.status(500).json({message:"Server Error"})
     }
 }
-// Update or delete a Sale
+// Update or Add a Sale
 export const updateVariantSale = async (req:Request,res:Response)=>{
     try{
-        const isValidProductVarId:boolean = Types.ObjectId.isValid(req.params.variantId)
-        if(!isValidProductVarId){
-            res.status(404).json({message:"Invalid ProductId in URL"})
+        const data:{saleOptions:{startDate?:Date, endDate?:Date, discountPercentage?:number},productVarId:string} = {productVarId:req.params.variantId,saleOptions:req.body }
+    
+        const { error, value } = updateVariantSaleSchema.validate(data);
+        if(error){
+            res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
         }
-        const productVarId:IObjectId= new mongoose.Types.ObjectId(req.params.variantId)
-        // fetch for the product 
+        const {productVarId,saleOptions}=value
         const product = await ProductVariantModel.findById(productVarId)
         if(!product){
             res.status(404).json({message:"Product not found"})
             return
-        }
-        const data:{startDate:Date, endDate:Date, discountPercentage:number} =  req.body
+        }    
 
+        const {startDate,endDate,discountPercentage}=saleOptions
+        // if the product is on sale (allow partial update)
+        if( product.isOnSale && product.saleOptions){
+            const currentSale = product.saleOptions;
 
-        // if there is no data its delete 
-        if(!data || Object.keys(data).length === 0){
+            if(startDate){
+                if(!endDate && currentSale.endDate<=startDate){
+                    res.status(400).json({message:"Validation failed: startDate should be earlier than endDate"})
+                    return 
+                }
+                currentSale.startDate=startDate
 
-            // if the product is on sale its then reset it
-            if(product.isOnSale){
-                product.isOnSale=false
-                product.saleOptions=undefined
-                await product.save();
-                res.status(200).json({ message: "Sale deleted successfully" });
-                return 
-            }else{ // if its not then send its already set 
-                res.status(400).json({message:"Validation failed: 'discountPercentage','startDate' and 'endDate' attributes are required to update sale"})
+            }else{ // no startDate
+                if(endDate){
+                    if(!startDate && currentSale.startDate>=endDate){ // Ensure new end > start (old)
+                    res.status(400).json({message:"Validation failed: startDate should be earlier than endDate"})
+                    return 
+                    }
+                    currentSale.endDate=endDate
+                    
+                }
             }
+            // update sale percentage if its given
+            if(discountPercentage)
+                currentSale.discountPercentage=discountPercentage
 
-
-        }else{
-            // ensure the data is in the right format
-            const { error,value } = saleOptionsSchema.validate(data);
-            if(error){
-                res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
+            // update
+            await product.save()
+            res.status(200).json({message:"Sale updated successfully"})
+            return 
+        }else{ // Not on sale , Add sale strictly require all 3 attributes
+            if(!startDate || !endDate || !discountPercentage){
+                res.status(400).json({ message: "Validation failed: 'startDate', 'endDate' & 'discountPercentage' are required"});
                 return
             }
-            const {startDate,endDate,discountPercentage}=value
-            if(product.isOnSale && product.saleOptions){ // update the sale 
-                // if the new startDate is before the old startdate then set the one that is before
-                const currentSale = product.saleOptions;
-                // Joi checks that its > current time 
-                if( startDate<product.saleOptions.startDate){
-                    currentSale.startDate=startDate
-                }
-                // if the new endDate is larger than the old endDate we expand
-                if( endDate>product.saleOptions.endDate ){
-                    currentSale.endDate=endDate
-                }
-                // keep the ability to modify percentage  
-                currentSale.discountPercentage=discountPercentage
-                await product.save()
-                res.status(200).json({message:"Sale updated successfully"})
-                return 
-            }else{ // start sale 
-                product.isOnSale=true
-                product.saleOptions={startDate,endDate,discountPercentage}
-                await product.save()
-                res.status(200).json({message:"Sale created successfully"})
-                return 
-            }
+            product.isOnSale=true
+            product.saleOptions={startDate,endDate,discountPercentage}
+            await product.save()
+            res.status(200).json({message:"Sale created successfully"})
+            return 
         }
+        
     }catch(error){
         console.log(error)
         res.status(500).json({message:"Server Error"})
@@ -249,28 +237,21 @@ export const updateVariantSale = async (req:Request,res:Response)=>{
 // Update Variant stock (Add items) {size, quantity}
 export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
     try{
-        // get product Id
-        const isValidProductId:boolean = Types.ObjectId.isValid(req.params.productId)
-        if(!isValidProductId){
-            res.status(404).json({message:"Invalid ProductId in URL"})
-            return
-        }
-        const productId:IObjectId= new mongoose.Types.ObjectId(req.params.productId)
-        // fetch for the product 
-        const product = await ProductModel.findById(productId)
-        if(!product){
-            res.status(404).json({message:"Product not found"})
-            return
-        }
-        const data:{stock:{variant:string,details:{size:string,quantity:number}[]}[]} =  req.body
+        const data:{stock:{variant:string,details:{size:string,quantity:number}[]}[],productId: string} =  {productId:req.params.productId,stock:req.body}
+        
         // validate productDetails
         const { error, value } = updateQuantitySchema.validate(data);
         if(error){
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
         }
+        const {stock,productId}:{stock:IUpdateStock[],productId:IObjectId}=value
+        const product = await ProductModel.findById(productId)
+        if(!product){
+            res.status(404).json({message:"Product not found"})
+            return
+        }
         // ensure the variants belong to the same product & change type
-        const stock:IUpdateStock[]=value.stock
         const variantIdError=stock.map((stockElement)=>{
             const variantId:IObjectId= new mongoose.Types.ObjectId(stockElement.variant)
             if(!product.variants.includes(variantId)){ //if it doesn't belongs to same product
@@ -298,22 +279,14 @@ export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
 // Delete a product
 export const deleteProduct = async (req:DbSessionRequest, res:Response)=>{
     try{
-        const { error } = deleteProductQuerySchema.validate(req.query);
+        const { error,value} = deleteProductQuerySchema.validate({productId:req.params.productId,clearStock:req.query.clearStock});
         if (error) {
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
         }
         // Get validated query parameters
-        const { clearStock = 'false' } = req.query;
+        const { clearStock = 'false',productId } = value
         const session =req.dbSession as ClientSession 
-        const productIdString:string=req.params.productId
-        // get product Id
-        const isValidProductId:boolean = Types.ObjectId.isValid(productIdString)
-        if(!isValidProductId){
-            res.status(404).json({message:"Invalid ProductId in URL"})
-            return
-        }
-        const productId:IObjectId= new mongoose.Types.ObjectId(productIdString)
         // soft delete for the product 
         const updatedProduct = await ProductModel.findByIdAndUpdate(productId,{$set:{status:"Inactive"}},{new:true,session})
         if(!updatedProduct){
@@ -323,7 +296,7 @@ export const deleteProduct = async (req:DbSessionRequest, res:Response)=>{
         const updateObj:{status:string,quantity?:IQuantity[],stockStatus?:string} ={status: "Inactive"}
         if(clearStock==="true"){
             updateObj.quantity=[]
-            updateObj.stockStatus="Out of stock"
+            updateObj.stockStatus="Out of Stock"
         }
         //update its variants' status and reset their quantity 
         const updatedVariants = await ProductVariantModel.updateMany({_id:{$in:updatedProduct.variants}},{ $set: updateObj },{session})
@@ -339,7 +312,14 @@ export const deleteProduct = async (req:DbSessionRequest, res:Response)=>{
 }
 
 // Delete a variant 
+const deleteProductVariant = async (req:AuthRequest,res:Response)=>{
+    try{
 
+    }catch(error){
+        console.log(error)
+        res.status(500).json({message:"Server Error"})
+    }
+}
 // View sales
 
 // View purchaces
