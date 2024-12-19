@@ -1,6 +1,6 @@
 import imageSize from "image-size";
 import { IObjectId } from "./modalTypes";
-import { IProduct } from "../models/productModel";
+import { IProduct } from "../models/product/productModel";
 
 export interface IBase64Image {
   type:string,

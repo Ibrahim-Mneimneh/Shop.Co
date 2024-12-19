@@ -1,9 +1,10 @@
 import Joi from "joi"
 
 
-import { IProduct } from "../models/productModel"
-import { IQuantity } from "../models/productVariantModel"
+import { IProduct } from "../models/product/productModel"
+import { IQuantity } from "../models/product/productVariantModel"
 import mongoose,{ Types } from "mongoose"
+import { helpers } from "handlebars"
 
 
 export const validParamsIdSchema = Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message('Invalid Id format').required().custom((value:string, helpers) => {
@@ -128,18 +129,12 @@ export const updateVariantSaleSchema= Joi.object({
       }),
     endDate: Joi.date()
       .iso()
+      .greater("now")
       .optional()
       .messages({
         "date.greater": "Sale end date must be after the start date.",
         "date.base": "Sale end date must be a valid date.",
-      })
-      .when("startDate", {
-        is: Joi.exist(),
-        then: Joi.date().greater(Joi.ref("startDate")).required().messages({
-          "any.required": "Sale end date is required when start date is provided.",
-        }),
       }),
-    
     discountPercentage: Joi.number()
       .min(1)
       .max(99)
@@ -148,7 +143,13 @@ export const updateVariantSaleSchema= Joi.object({
         "number.min": "Discount percentage must be at least 1%.",
         "number.max": "Discount percentage cannot exceed 99%.",
       })
-  }).optional(),
+  }).custom((saleOptions,helpers)=>{
+    const {startDate,endDate}=saleOptions
+    if(startDate && endDate && (new Date(startDate) >= new Date(endDate))){
+      return helpers.error("any.invalid")
+    }
+    return saleOptions
+  }).messages({"any.invalid": "Sale start date must be before the sale end date."}),
   productVarId:validParamsIdSchema
 })
 .options({ convert: true });
