@@ -1,5 +1,4 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
-import { ProductVariantModel } from "./productVariantModel";
 
 
 
@@ -20,7 +19,7 @@ interface IEndSale extends Document{
 }
 
 const startSaleSchema= new Schema<IStartSale>({
-    startDate: {type:Date,required:true,validate:{validator:
+    startDate: {type:Date,required:true,unique:true,validate:{validator:
         function(value){
            return value > new Date() 
         },message: 'startDate must be in the future.',}
@@ -31,7 +30,7 @@ const startSaleSchema= new Schema<IStartSale>({
 })
 
 const endSaleSchema= new Schema<IEndSale>({
-    endDate: {type:Date,required:true,validate:{validator:
+    endDate: {type:Date,required:true,unique:true,validate:{validator:
         function(value){
            return value > new Date()
         },message: 'endDate must be in the future.',}
@@ -41,23 +40,6 @@ const endSaleSchema= new Schema<IEndSale>({
     expiresAt:{type:Date}
 })
 
-startSaleSchema.post("updateMany",async function(doc,next){
-    
-    if(doc && doc.startDate && doc.isProcessed){
-        doc.expiresAt=doc.startDate
-        await doc.save()
-    }
-    next()
-})
-
-endSaleSchema.post("updateMany",async function(doc,next){
-    
-    if(doc && doc.endDate && doc.isProcessed){
-        doc.expiresAt=doc.endDate
-        await doc.save()
-    }
-    next()
-})
 // TTL
 startSaleSchema.index({expiresAt: 1 },{ expireAfterSeconds: 0 })
 endSaleSchema.index({expiresAt: 1 },{ expireAfterSeconds: 0 })
