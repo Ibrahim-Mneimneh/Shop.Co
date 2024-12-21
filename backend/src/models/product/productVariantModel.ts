@@ -43,13 +43,8 @@ const productVariantSchema = new Schema<IProductVariant>({
             saleOptions: {type:{
                 startDate: { type: Schema.Types.Date, required: true },
                 endDate: { type: Schema.Types.Date, required: true },
-                discountPercentage: { type: Number, min: 1, max: 99 }},validate: {validator: function (this: IProductVariant) {
-                    if (this.isOnSale) {
-                        return (this.saleOptions && this.saleOptions.endDate > this.saleOptions.startDate);
-                    }
-                    return !this.saleOptions;
-                    },
-                    message: "saleOptions must have valid dates when isOnSale is true.",},},
+                discountPercentage: { type: Number, min: 1, max: 99 }}
+              },
   status: {type:String, enum:["Active", "Inactive"],default:"Active"},
   stockStatus:{type:String, enum:["In Stock","Out of Stock"],default:"In Stock"},
   product:{type:Schema.Types.ObjectId,ref:"Product",required:true}             
@@ -60,6 +55,9 @@ productVariantSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.updatedAt
     delete ret.status
     delete ret.__v
+    if(!ret.isOnSalen && ret.saleOptions){
+      delete ret.saleOptions
+    }
     return ret
 }});
 
