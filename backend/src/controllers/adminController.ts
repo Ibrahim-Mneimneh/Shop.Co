@@ -11,9 +11,10 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import { IBase64Image, IIsValidBase64, isValidBase64, IUpdateStock } from "../types/adminControllerTypes";
 import { ProductImageModel } from "../models/product/productImageModel";
 import { IProduct, ProductModel } from "../models/product/productModel";
-import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, saleOptionsSchema, updateQuantitySchema, updateVariantSaleSchema, validParamsIdSchema } from "../types/productTypes";
+import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, updateQuantitySchema, updateVariantSaleSchema, validParamsIdSchema } from "../types/productTypes";
 import { IProductVariant, IQuantity, ProductVariantModel } from "../models/product/productVariantModel";
 import { DbSessionRequest } from "../middleware/sessionMiddleware";
+import { EndSaleModel, StartSaleModel } from "../models/product/productSale";
 
 
 // Admin login
@@ -170,7 +171,7 @@ export const addProductVariant:RequestHandler = async (req:DbSessionRequest,res:
     }
 }
 // Update or Add a Sale
-export const updateVariantSale = async (req:Request,res:Response)=>{
+export const updateVariantSale = async (req:DbSessionRequest,res:Response)=>{
     try{
         const data:{saleOptions:{startDate?:Date, endDate?:Date, discountPercentage?:number},productVarId:string} = {productVarId:req.params.variantId,saleOptions:req.body }
     
@@ -179,6 +180,7 @@ export const updateVariantSale = async (req:Request,res:Response)=>{
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
         }
+        const session = req.dbSession as ClientSession
         const {productVarId,saleOptions}=value
         const product = await ProductVariantModel.findById(productVarId)
         if(!product){
@@ -188,32 +190,66 @@ export const updateVariantSale = async (req:Request,res:Response)=>{
 
         const {startDate,endDate,discountPercentage}=saleOptions
         // if the product is on sale (allow partial update)
-        if( product.isOnSale && product.saleOptions){
+        if( product.saleOptions && product.saleOptions.startDate && product.saleOptions.endDate && product.saleOptions.discountPercentage){
             const currentSale = product.saleOptions;
+            if(startDate && startDate!==currentSale.startDate){
 
-            if(startDate){
-                if(!endDate && currentSale.endDate<=startDate){
+                if(!endDate && currentSale.endDate<=startDate){ // ensure endDate>start
                     res.status(400).json({message:"Validation failed: startDate should be earlier than endDate"})
                     return 
                 }
+                // startSale update; remove prodvarId from old startSale to new one
+                const saleUpdateOps = [
+                    {updateOne:{
+                        filter:{startDate:currentSale.startDate},
+                        update:{$pull:{productVariants:productVarId}},
+                    }},
+                    {updateOne:{
+                        filter:{startDate},
+                        update:{$addToSet:{productVariants:productVarId}},
+                        upsert:true,
+                    }}
+                ]
+                const startSaleUpdate= await StartSaleModel.bulkWrite(saleUpdateOps,{session})
+                if(startSaleUpdate.ok !== 1 || startSaleUpdate.hasWriteErrors()){
+                    res.status(400).json({message:"Failed to update sale"})
+                    return
+                }
+                // update productVar startDate
                 currentSale.startDate=startDate
-
             }else{ // no startDate
-                if(endDate){
+                if(endDate && endDate!==currentSale.endDate){
                     if(!startDate && currentSale.startDate>=endDate){ // Ensure new end > start (old)
                     res.status(400).json({message:"Validation failed: startDate should be earlier than endDate"})
                     return 
                     }
+                    // update endSale
+                    const saleUpdateOps = [
+                        {updateOne:{
+                            filter:{endDate:currentSale.endDate},
+                            update:{$pull:{productVariants:productVarId}},
+                        }},
+                        {updateOne:{
+                            filter:{endDate:endDate},
+                            update:{$addToSet:{productVariants:productVarId}},
+                            upsert:true,
+                        }}
+                    ]
+                    const endSaleUpdate= await EndSaleModel.bulkWrite(saleUpdateOps,{session})
+                    if(endSaleUpdate.ok !== 1 || endSaleUpdate.hasWriteErrors()){
+                        res.status(400).json({message:"Failed to update sale"})
+                        return
+                    }
+                    // update productVar endDate
                     currentSale.endDate=endDate
-                    
                 }
             }
             // update sale percentage if its given
             if(discountPercentage)
                 currentSale.discountPercentage=discountPercentage
 
-            // update
-            await product.save()
+            
+            await product.save({session})
             res.status(200).json({message:"Sale updated successfully"})
             return 
         }else{ // Not on sale , Add sale strictly require all 3 attributes
@@ -221,9 +257,15 @@ export const updateVariantSale = async (req:Request,res:Response)=>{
                 res.status(400).json({ message: "Validation failed: 'startDate', 'endDate' & 'discountPercentage' are required"});
                 return
             }
-            product.isOnSale=true
+            // fetch for start and endDates if not found create one
+            const startSale= await StartSaleModel.updateOne({startDate:startDate},{$addToSet:{productVariants:productVarId}},{upsert:true,session})
+            const endSale= await EndSaleModel.updateOne({endDate:endDate},{$addToSet:{productVariants:productVarId}},{upsert:true,session})
+            if(!startSale.acknowledged || !endSale.acknowledged){
+                res.status(400).json({message:"Failed to add sale"})
+                return 
+            }
             product.saleOptions={startDate,endDate,discountPercentage}
-            await product.save()
+            await product.save({session})
             res.status(200).json({message:"Sale created successfully"})
             return 
         }
@@ -276,50 +318,7 @@ export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
     }
 }
 
-// Delete a product
-export const deleteProduct = async (req:DbSessionRequest, res:Response)=>{
-    try{
-        const { error,value} = deleteProductQuerySchema.validate({productId:req.params.productId,clearStock:req.query.clearStock});
-        if (error) {
-            res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
-            return
-        }
-        // Get validated query parameters
-        const { clearStock = 'false',productId } = value
-        const session =req.dbSession as ClientSession 
-        // soft delete for the product 
-        const updatedProduct = await ProductModel.findByIdAndUpdate(productId,{$set:{status:"Inactive"}},{new:true,session})
-        if(!updatedProduct){
-            res.status(404).json({message:"Product not found"})
-            return
-        }
-        const updateObj:{status:string,quantity?:IQuantity[],stockStatus?:string} ={status: "Inactive"}
-        if(clearStock==="true"){
-            updateObj.quantity=[]
-            updateObj.stockStatus="Out of Stock"
-        }
-        //update its variants' status and reset their quantity 
-        const updatedVariants = await ProductVariantModel.updateMany({_id:{$in:updatedProduct.variants}},{ $set: updateObj },{session})
-        if(!updatedVariants){
-            res.status(400).json({message:"Failed to delete product"})
-            return
-        }
-        res.status(200).json({message:"Product deleted successfully"})
-    }catch(error){
-        console.log(error)
-        res.status(500).json({message:"Server Error"})
-    }
-}
 
-// Delete a variant 
-const deleteProductVariant = async (req:AuthRequest,res:Response)=>{
-    try{
-
-    }catch(error){
-        console.log(error)
-        res.status(500).json({message:"Server Error"})
-    }
-}
 // View sales
 
 // View purchaces
