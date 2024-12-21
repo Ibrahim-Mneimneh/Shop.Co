@@ -4,13 +4,19 @@ import { ProductVariantModel } from "./productVariantModel";
 
 
 interface IStartSale extends Document{
+    _id:Types.ObjectId,
     startDate:Date,
-    productVariants:Types.ObjectId[]
+    productVariants:Types.ObjectId[],
+    isProcessed:boolean,
+    expiresAt?:Date
 }
 
 interface IEndSale extends Document{
+    _id:Types.ObjectId,
     endDate:Date,
-    productVariants:Types.ObjectId[]
+    productVariants:Types.ObjectId[],
+    isProcessed:boolean,
+    expiresAt?:Date
 }
 
 const startSaleSchema= new Schema<IStartSale>({
@@ -19,7 +25,9 @@ const startSaleSchema= new Schema<IStartSale>({
            return value > new Date() 
         },message: 'startDate must be in the future.',}
     },
-    productVariants:[{type:Schema.Types.ObjectId,ref:"ProductVariant"}]
+    productVariants:[{type:Schema.Types.ObjectId,ref:"ProductVariant"}],
+    isProcessed:{type:Boolean,default:false},
+    expiresAt:{type:Date}
 })
 
 const endSaleSchema= new Schema<IEndSale>({
@@ -28,93 +36,35 @@ const endSaleSchema= new Schema<IEndSale>({
            return value > new Date()
         },message: 'endDate must be in the future.',}
     },
-    productVariants:[{type:Schema.Types.ObjectId,ref:"ProductVariant"}]
+    productVariants:[{type:Schema.Types.ObjectId,ref:"ProductVariant"}],
+    isProcessed:{type:Boolean,default:false},
+    expiresAt:{type:Date}
 })
+
+startSaleSchema.post("updateMany",async function(doc,next){
+    
+    if(doc && doc.startDate && doc.isProcessed){
+        doc.expiresAt=doc.startDate
+        await doc.save()
+    }
+    next()
+})
+
+endSaleSchema.post("updateMany",async function(doc,next){
+    
+    if(doc && doc.endDate && doc.isProcessed){
+        doc.expiresAt=doc.endDate
+        await doc.save()
+    }
+    next()
+})
+// TTL
+startSaleSchema.index({expiresAt: 1 },{ expireAfterSeconds: 0 })
+endSaleSchema.index({expiresAt: 1 },{ expireAfterSeconds: 0 })
+
+// Indexed for faster Query
+startSaleSchema.index({startDate:1})
+endSaleSchema.index({endDate:1})
 
 export const StartSaleModel =mongoose.model<IStartSale>("StartSale",startSaleSchema);
 export const EndSaleModel =mongoose.model<IEndSale>("EndSale",endSaleSchema);
-
-StartSaleModel.watch().on("change", async(change)=>{
-
-    if(change.operation=== "insert"){
-        const startSale:IStartSale = change.fullDocument;
-        const currentDate:Date = new Date()
-        const startDate:Date = startSale.startDate
-        const delayInMilliseconds:number = startDate.getTime() - currentDate.getTime() - 1000
-        setTimeout(async ()=>{
-            const session = await mongoose.startSession();
-            session.startTransaction();
-            const {productVariants}=startSale
-            try{
-                const operations = productVariants.map((productVariant)=>{
-                    return {
-                        updateOne:{
-                            filter:{_id:productVariant},
-                            update:{
-                                $set:{isOnSale:true},
-                            }
-                        }
-                    }
-                })
-
-                const result = await ProductVariantModel.bulkWrite(operations, { session });
-
-                if (result.ok !== 1) {
-                    throw new Error('StartDate Bulk write operation failed');
-                }
-                if(result.modifiedCount!==productVariants.length){
-                    throw new Error('StartDate Bulk write operation failed to update all productVariants');
-                }
-                await session.commitTransaction();
-                session.endSession();
-            }catch(error){
-                await session.abortTransaction();
-                session.endSession();
-                console.error('StartDate Transaction failed, changes rolled back:', error);
-            }
-        },delayInMilliseconds)
-    }
-})
-
-
-EndSaleModel.watch().on("change", async(change)=>{
-
-    if(change.operation=== "insert"){
-        const endSale:IEndSale = change.fullDocument;
-        const currentDate:Date = new Date()
-        const endDate:Date = endSale.endDate
-        const delayInMilliseconds:number = endDate.getTime() - currentDate.getTime() - 1000
-        setTimeout(async ()=>{
-            const session = await mongoose.startSession();
-            session.startTransaction();
-            const {productVariants}=startSale
-            try{
-                const operations = productVariants.map((productVariant)=>{
-                    return {
-                        updateOne:{
-                            filter:{_id:productVariant},
-                            update:{
-                                $set:{isOnSale:true},
-                            }
-                        }
-                    }
-                })
-
-                const result = await ProductVariantModel.bulkWrite(operations, { session });
-
-                if (result.ok !== 1) {
-                    throw new Error('StartDate Bulk write operation failed');
-                }
-                if(result.modifiedCount!==productVariants.length){
-                    throw new Error('StartDate Bulk write operation failed to update all productVariants');
-                }
-                await session.commitTransaction();
-                session.endSession();  
-            }catch(error){
-                await session.abortTransaction();
-                session.endSession();
-                console.error('StartDate Transaction failed, changes rolled back:', error);
-            }
-        },delayInMilliseconds)
-    }
-})
