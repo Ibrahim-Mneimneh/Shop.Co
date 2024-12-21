@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { addProduct, addProductImage, addProductVariant, adminLogin, deleteProduct, restockProduct, updateVariantSale } from '../controllers/adminController';
+import { addProduct, addProductImage, addProductVariant, adminLogin, deleteProduct, deleteProductVariant, restockProduct, updateVariantSale } from '../controllers/adminController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { sessionMiddleware } from '../middleware/sessionMiddleware';
 
@@ -7,13 +7,24 @@ const router: Router = express.Router();
 
 // Add product
 router.post("/login",adminLogin)
+
+// Auth Middleware for routes
 router.use("/",authMiddleware)
+
+// Add Product 
 router.post("/products",addProduct)
+// Add Product Images
 router.post("/products/images",addProductImage)
-router.patch("/products/variants/:variantId",updateVariantSale)
-router.patch("/products/:productId",sessionMiddleware,restockProduct)
-router.post("/products/:productId",sessionMiddleware,addProductVariant)
+// Add varinat Sale or update it
+router.patch("/products/variants/sales/:variantId",sessionMiddleware,updateVariantSale)
+// Soft Delete Product
 router.delete("/products/:productId",sessionMiddleware,deleteProduct)
+// Soft Delete Variant
+router.delete("/products/variants/:variantId",deleteProductVariant) 
+// Restock Product
+router.patch("/products/restock/:productId",sessionMiddleware,restockProduct) 
+// Add Variant for a Product
+router.post("/products/:productId/variants",sessionMiddleware,addProductVariant) 
 
 
 export const adminRoutes=router
