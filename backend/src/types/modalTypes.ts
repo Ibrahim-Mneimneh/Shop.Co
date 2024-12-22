@@ -9,9 +9,8 @@ export interface IOrderQuantity{
   quantity:number
 }
 
-export interface IProductRef {
-    productId: Types.ObjectId;
-    quantity: IOrderQuantity[];
+export interface IProductRef{
+    variant: Types.ObjectId,
+    quantity: IOrderQuantity[],
     price?:Types.Decimal128
-    color:string,
 }

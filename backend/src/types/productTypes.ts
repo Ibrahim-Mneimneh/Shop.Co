@@ -4,9 +4,8 @@ import Joi from "joi"
 import { IProduct } from "../models/product/productModel"
 import { IQuantity } from "../models/product/productVariantModel"
 import mongoose,{ Types } from "mongoose"
-import { IObjectId } from "./modalTypes"
 
-export const validParamsIdSchema = Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message('Invalid Id format').required().custom((value:string, helpers) => {
+export const validIdSchema = Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message('Invalid Id format').required().custom((value:string, helpers) => {
   if (!Types.ObjectId.isValid(value)) {
       return helpers.message({"any.invalid": "Invalid Id."});
     }
@@ -67,12 +66,12 @@ export const addProductVariantSchema=Joi.object({
     .messages({
       "array.min": "At least one product variant is required.",
     }),
-    productId:validParamsIdSchema
+    productId:validIdSchema
 });
 
 export const updateQuantityDetails=Joi.object({
   size:Joi.string().valid("XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size").required(),
-  quantity:Joi.number().integer().min(0).required()
+  quantity:Joi.number().integer().min(1).required()
 })
 
 export const updateQuantitySchema =Joi.object({
@@ -82,13 +81,13 @@ export const updateQuantitySchema =Joi.object({
       .messages({
       "array.min": "At least one quantity should be added.",
       }),
-    variant:validParamsIdSchema
+    variant:validIdSchema
   }).min(1).required(),
-  productId: validParamsIdSchema
+  productId: validIdSchema
 })
 
 export const deleteProductQuerySchema = Joi.object({
-  Id:validParamsIdSchema,
+  Id:validIdSchema,
   clearStock: Joi.string().valid('true', 'false').optional().trim().lowercase().messages({
       "string.base": "Attribute clearStock must be a string ('true' or 'false').",
       "any.only": "Attribute clearStock can only be 'true' or 'false'.",
@@ -128,6 +127,6 @@ export const updateVariantSaleSchema= Joi.object({
     }
     return saleOptions
   }).messages({"any.invalid": "Sale start date must be before the sale end date."}),
-  productVarId:validParamsIdSchema
+  productVarId:validIdSchema
 })
 .options({ convert: true });
