@@ -7,8 +7,6 @@ export interface ICart extends Document {
     _id:Types.ObjectId,
     user:Types.ObjectId,
     products:IProductRef[],
-    totalPrice: Number
-    updatePrice(): Promise<void>;
 }
 
 
@@ -22,7 +20,6 @@ const cartSchema = new Schema<ICart>({
         
         }]
     }],
-    totalPrice:{type:Number,default: 0.0,}
 });
 
 
@@ -31,30 +28,6 @@ cartSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.user
     return
 }});
-
-cartSchema.methods.updatePrice = async function (): Promise<void> {
-    let total = 0;
-
-    //Add a discount option for a special customer and Include a type for Product 
-    for (let product of this.products) {
-        const productData = await mongoose.model('Product').findById(product.productId);
-        if (productData) {
-            total += product.quantity * productData.price;
-        }
-    }
-
-    this.totalPrice = total;
-};
-
-/*cartSchema.pre("save",async function(next){
-    try{
-        await this.updatePrice()
-        next()
-    }
-    catch(error:any){
-        next(error)
-    }
-})*/
 
 
 export const CartModel =mongoose.model<ICart>("Cart",cartSchema);
