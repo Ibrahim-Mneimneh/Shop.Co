@@ -1,4 +1,5 @@
 import mongoose,{Types,Schema} from "mongoose"
+import { IProductVariant } from "../models/product/productVariantModel"
 
 export type IObjectId=Types.ObjectId
 export type IDecimal=Types.Decimal128
@@ -10,7 +11,7 @@ export interface IOrderQuantity{
 }
 
 export interface IProductRef{
-    variant: Types.ObjectId,
+    variant: IProductVariant,
     quantity: IOrderQuantity[],
-    price?:Types.Decimal128
+    price?:number
 }
