@@ -11,7 +11,7 @@ export interface IOrderQuantity{
 }
 
 export interface IProductRef{
-    variant: IProductVariant,
+    variant: IProductVariant | IObjectId,
     quantity: IOrderQuantity[],
     price?:number
 }
