@@ -4,17 +4,53 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import { CartModel, ICart } from "../models/cartModel";
 import { addToCartSchema } from "../types/cartControllerTypes";
 import { ProductVariantModel } from "../models/product/productVariantModel";
-import { IProductRef } from "../types/modalTypes";
+import { IOrderQuantity, IProductRef } from "../types/modalTypes";
 
 // get Cart 
 export const getCart: RequestHandler  =async (req:AuthRequest,res:Response)=>{
     try{
-        const cartData= await CartModel.findById(req.cartId)
+        const cartData:ICart | null= await CartModel.findById(req.cartId).populate({
+            path:"products.variant",
+            select:"-quantity",
+            options:{as:"variantData"},
+            populate:{
+                path:"product",
+                select:"name rating -_id"
+            }
+        }).select("-products.quantity._id -products._id")
         if(!cartData){
             res.status(404).json({message:"Cart not found"})
             return 
         }
-        res.status(200).json({message:"Successful",data:cartData})
+        if(cartData.products.length===0){
+            res.status(200).json({message:"Cart is empty",cartData:{}})
+            return
+        }
+        let totalPrice = 0
+        cartData.products.forEach((product)=>{
+            const variant = product.variant
+            const quantity:IOrderQuantity[]= product.quantity
+            const originalPrice: number = variant.originalPrice;
+            if(quantity.length===1){
+                if(variant.isOnSale && variant.saleOptions){
+                totalPrice+=(originalPrice*((100-variant.saleOptions.discountPercentage)/100))*quantity[0].quantity
+                }else{
+                    totalPrice+=(originalPrice*quantity[0].quantity)
+                }
+            }else{
+               quantity.forEach(quantity=>{
+                if(variant.isOnSale && variant.saleOptions){
+                totalPrice+=(originalPrice*((100-variant.saleOptions.discountPercentage)/100))*quantity.quantity
+                }else{
+                    totalPrice+=(originalPrice*quantity.quantity)
+                }
+               })
+            }
+        })
+        totalPrice = parseFloat(totalPrice.toFixed(2));
+    
+
+        res.status(200).json({message:"Successful",data:{cartData,totalPrice}})
         
     }catch(error){
         console.log(error)
