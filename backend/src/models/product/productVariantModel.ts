@@ -20,7 +20,7 @@ export interface IProductVariant extends Document{
   color:string,
   quantity:IQuantity[],
   images: Types.ObjectId[];
-  originalPrice: Number;
+  originalPrice: number;
   isOnSale: boolean;
   saleOptions?: ISaleOptions
   status: "Active" | "Inactive"
@@ -55,8 +55,11 @@ productVariantSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.updatedAt
     delete ret.status
     delete ret.__v
-    if(!ret.isOnSalen && ret.saleOptions){
+    if(!ret.isOnSale && ret.saleOptions){
       delete ret.saleOptions
+    }
+    if(ret.isOnSale && ret.saleOptions){
+      delete ret.saleOptions._id
     }
     return ret
 }});
