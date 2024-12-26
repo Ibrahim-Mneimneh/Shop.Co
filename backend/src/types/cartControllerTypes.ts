@@ -16,7 +16,7 @@ const validQuantity= Joi.number().min(1).required().messages({
 
 export const addToCartSchema=Joi.object({
     variantId:validIdSchema,
-    sizeId:validSize,
+    size:validSize,
     quantity:validQuantity
 })
 
@@ -24,7 +24,7 @@ export const addToCartSchema=Joi.object({
 export const updateCartQuantitySchema=Joi.object({
     updateDetails:Joi.object({
         operation:Joi.string().lowercase().valid("increment","decrement").required(),
-        sizeId:validIdSchema,
+        size:validSize,
     }),
     variantId:validIdSchema
 })
