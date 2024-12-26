@@ -1,6 +1,5 @@
 import Joi from "joi"
 import { validIdSchema } from "./productTypes"
-import { IProductModel } from "../models/product/productModel";
 import { IProductVariant } from "../models/product/productVariantModel";
 
 
@@ -28,6 +27,14 @@ export const updateCartQuantitySchema=Joi.object({
     }),
     variantId:validIdSchema
 })
+
+export const deleteCartProductSchema= Joi.object({
+    variantId:validIdSchema,
+    deleteDetails:Joi.object({
+        size:validSize
+    }) 
+})
+
 
 export const calculatePrice = (quantity: number,variant:IProductVariant,originalPrice:number) => {
     if (variant.isOnSale && variant.saleOptions) {
