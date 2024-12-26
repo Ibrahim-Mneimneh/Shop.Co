@@ -146,33 +146,55 @@ export const addToCart:RequestHandler =async (req:AuthRequest,res:Response)=>{
 }
 
 // Update existing items (increase/decrease quantity)
-export const updateCartQuantity:RequestHandler =async (req:AuthRequest,res:Response)=>{
+export const updateProductCartQuantity:RequestHandler =async (req:AuthRequest,res:Response)=>{
     try{
         // {operation nd size, productId from params}
         const cartId= req.cartId
-        const {error,value}= updateCartQuantitySchema.validate({variantId:req.params.productId,updateDetails:req.body})
+        const {error,value}= updateCartQuantitySchema.validate({variantId:req.params.variantId,updateDetails:req.body})
         if(error){
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') })
             return
         }
         const {variantId}=value
-        const {sizeId,operation}=value.updateDetails
-        const cartData= await CartModel.findOne({_id:cartId,"products.variant":variantId,"products.quantity._id":sizeId},{"products.$":1,"products.quantity.$": 1}).populate({
-            path:"products.variant",
-            select:"quantity stockStatus status",
-            match:{"quantity._id":sizeId}
+        const {size,operation}=value.updateDetails
+
+        const variantData = await ProductVariantModel.findById(variantId,{"quantity": { $elemMatch: { size } },stockStatus:1,status:1})
+
+        if(!variantData || variantData.quantity.length===0){
+            const message:string = !variantData?"Product not found":"Requested size isn't available"
+            res.status(404).json({ message })
+            return
+        }
+        const quantityLeft=variantData.quantity[0].quantityLeft
+        
+        if(variantData.stockStatus==="Out of Stock"|| variantData.status==="Inactive"){        
+            res.status(400).json({ message:"Product currently unavailable or out of stock"})
+            return
+        }
+
+        const cartData= await CartModel.findOne({ // ensure size exists in the cart
+            _id:cartId,"products.variant":variantId,"products.quantity.size":size},{
+            products:{ 
+                $elemMatch: {
+                    variant: variantId,
+                    "quantity.size": size
+                }
+            }
         })
         if(!cartData){
-            res.status(404).json({ message: "Product not found"})
+            res.status(404).json({ message: "Cart has no matching product."})
             return
         }
-        const variantData =cartData.products[0].variant as IProductVariant
-        if(variantData.stockStatus==="Out of Stock" || variantData.status==="Inactive"){
-            res.status(400).json({ message: "Product currently unavailable or out of stock"})
-            return
+        let sizeIndex:number=0
+        const cartProductQuantity=cartData.products[0].quantity
+        for(let i=0;i<cartProductQuantity.length;i++){
+            const quantity=cartProductQuantity[i]
+            if(quantity.size===size){
+                sizeIndex=i
+                break
+            }
         }
-        let updatedCart:ICart |null =null
-        const quantity=cartData.products[0].quantity[0].quantity
+        const quantity=cartData.products[0].quantity[sizeIndex].quantity
         if(operation==="increment" || operation==="decrement"){
             const quantityLeft =variantData.quantity[0].quantityLeft
             const quantityChange = operation === "increment" ? 1 : -1;
@@ -188,14 +210,14 @@ export const updateCartQuantity:RequestHandler =async (req:AuthRequest,res:Respo
                 return
             }
             
-            updatedCart = await CartModel.findOneAndUpdate({ _id: cartId, 
+            const updatedCart = await CartModel.findOneAndUpdate({ _id: cartId, 
                 "products.variant": variantId, 
-                "products.quantity._id": sizeId 
+                "products.quantity.size": size 
             },{$inc: { "products.$.quantity.$[elem].quantity": quantityChange }},
-            {arrayFilters: [{ "elem._id": sizeId }]});
+            {arrayFilters: [{ "elem.size": size }],new:true});
 
             if (!updatedCart) {
-                res.status(404).json({ message: "Failed to add product" });
+                res.status(404).json({ message: "Failed to update cart" });
                 return
             }
 
