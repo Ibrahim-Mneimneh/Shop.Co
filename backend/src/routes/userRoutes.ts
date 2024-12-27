@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import { getUser, loginUser, registerUser } from '../controllers/userController';
 import { authMiddleware } from '../middleware/authMiddleware';
-import { addToCart, getCart, updateProductCartQuantity } from '../controllers/cartController';
+import { addToCart, deleteCartProduct, getCart, updateProductCartQuantity } from '../controllers/cartController';
 
 const router: Router = express.Router();
 
@@ -22,10 +22,14 @@ router.get("/cart",getCart)
 router.post("/cart",addToCart)
 // Update product quantity in the cart
 router.patch("/cart/products/:variantId",updateProductCartQuantity)
+// delete product (size or fully) from the cart
+router.delete("/cart/products/:variantId",deleteCartProduct)
 // Make an order
 router.post("/cart/order")
 // View users' orders
 router.get("/orders")
 // View users' order
 router.get("/orders/:orderId")
+
+
 export const userRouter:Router = router;
