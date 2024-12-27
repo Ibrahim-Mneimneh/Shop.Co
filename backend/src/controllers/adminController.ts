@@ -1,17 +1,17 @@
 import { Request, RequestHandler, Response, } from "express";
 import bcrypt from "bcryptjs"
-import mongoose, { Types } from "mongoose";
+import mongoose, { isValidObjectId, Types } from "mongoose";
 
 
 import { loginSchema } from "./userController";
 import { UserModel } from "../models/userModel";
 import { jwtGenerator } from "./authController";
-import { ClientSession, IObjectId } from "../types/modalTypes";
+import { ClientSession, IObjectId, IOrderQuantity } from "../types/modalTypes";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { IBase64Image, IIsValidBase64, isValidBase64, IUpdateStock } from "../types/adminControllerTypes";
 import { ProductImageModel } from "../models/product/productImageModel";
 import { IProduct, ProductModel } from "../models/product/productModel";
-import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, updateQuantitySchema, updateVariantSaleSchema, validParamsIdSchema } from "../types/productTypes";
+import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, updateQuantitySchema, updateVariantSaleSchema, validIdSchema } from "../types/productTypes";
 import { IProductVariant, IQuantity, ProductVariantModel } from "../models/product/productVariantModel";
 import { DbSessionRequest } from "../middleware/sessionMiddleware";
 import { EndSaleModel, StartSaleModel } from "../models/product/productSale";
@@ -276,10 +276,61 @@ export const updateVariantSale = async (req:DbSessionRequest,res:Response)=>{
     }
 }
 
+// delete Variant Sale 
+export const deleteVariantSale = async (req:DbSessionRequest,res:Response)=>{
+    try{
+        const session=req.dbSession
+        const {error,value}= validIdSchema.validate(req.params.variantId)
+        if(error){
+            res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
+            return
+        }
+        const variantId=value
+        const variantSaleData= await ProductVariantModel.findById(variantId,{isOnSale:1,saleOptions:1})
+        if(!variantSaleData){
+            res.status(404).json({message:"Product not found"})
+            return
+        }
+        const {isOnSale,saleOptions}=variantSaleData
+        let updatedVrainat:IProductVariant|null=null
+
+        // Variant is is onSale or pending it ("saleOptions is loaded")
+        if(saleOptions && saleOptions?.startDate && saleOptions?.endDate){
+            const {startDate,endDate}=saleOptions
+            if(isOnSale){ // sale started
+                const endSaleData = await EndSaleModel.findOneAndUpdate({endDate},{ $pull: { productVariants: variantId } },{session})
+                if(!endSaleData){
+                    res.status(400).json({message:"Failed to update sale"})
+                    return
+                }
+            }else{ // sale hasn't started
+                const startSaleData = await StartSaleModel.findOneAndUpdate({startDate},{ $pull: { productVariants: variantId } },{session})
+                const endSaleData = await EndSaleModel.findOneAndUpdate({endDate},{ $pull: { productVariants: variantId } },{session})
+                if(!startSaleData || !endSaleData){
+                    res.status(400).json({message:"Failed to remove sale"})
+                    return
+                } 
+            }
+            // update variant 
+            updatedVrainat= await ProductVariantModel.findByIdAndUpdate(variantId,{
+                $set:{isOnSale:false,saleOptions:null}
+            },{new:true,session})
+
+        }else{ // if there is no sale
+            res.status(400).json({message:"Failed to remove sale. Product not on sale"})
+            return
+        }
+        res.status(200).json({message:"Sale removed successfully",data:updatedVrainat})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({message:"Server Error"})
+    }
+}
+
 // Update Variant stock (Add items) {size, quantity}
 export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
     try{
-        const data:{stock:{variant:string,details:{size:string,quantity:number}[]}[],productId: string} =  {productId:req.params.productId,stock:req.body}
+        const data:{stock:{variant:string,details:IOrderQuantity[]}[],productId: string} =  {productId:req.params.productId,stock:req.body}
         
         // validate productDetails
         const { error, value } = updateQuantitySchema.validate(data);
@@ -318,7 +369,7 @@ export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
     }
 }
 
-// Delete a product
+// Delete a product with reset stock option
 export const deleteProduct = async (req:DbSessionRequest, res:Response)=>{
     try{
         const { error,value} = deleteProductQuerySchema.validate({Id:req.params.productId,clearStock:req.query.clearStock});
@@ -353,7 +404,7 @@ export const deleteProduct = async (req:DbSessionRequest, res:Response)=>{
     }
 }
 
-// Delete a variant 
+// Delete a variant with reset stock option
 export const deleteProductVariant = async (req:DbSessionRequest,res:Response)=>{
     try{
         const { error,value} = deleteProductQuerySchema.validate({Id:req.params.variantId,clearStock:req.query.clearStock});
@@ -380,7 +431,7 @@ export const deleteProductVariant = async (req:DbSessionRequest,res:Response)=>{
         res.status(500).json({message:"Server Error"})
     }
 }
-// View sales
+// View sales ** need original Price
 
 // View purchaces
 
