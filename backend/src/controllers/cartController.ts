@@ -2,7 +2,7 @@ import { Response,RequestHandler } from "express";
 
 import { AuthRequest } from "../middleware/authMiddleware";
 import { CartModel, ICart } from "../models/cartModel";
-import { addToCartSchema, updateCartQuantitySchema } from "../types/cartControllerTypes";
+import { addToCartSchema, deleteCartProductSchema, updateCartQuantitySchema } from "../types/cartControllerTypes";
 import { IProductVariant, ProductVariantModel } from "../models/product/productVariantModel";
 import { IObjectId, IOrderQuantity, IProductRef } from "../types/modalTypes";
 import { valid } from "joi";
@@ -223,6 +223,47 @@ export const updateProductCartQuantity:RequestHandler =async (req:AuthRequest,re
 
             res.status(200).json({ message: "Cart updated successfully", data: updatedCart });
         }
+    }catch(error){
+        console.log(error)
+        res.status(500).json({message:"Server Error"})
+    }
+}
+
+export const deleteCartProduct: RequestHandler = async (req:AuthRequest,res:Response)=>{
+    try{
+        const {error,value}= deleteCartProductSchema.validate({variantId:req.params.variantId,deleteDetails:req.body})
+        if(error){
+            res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') })
+            return
+        }
+        const cartId= req.cartId
+        const {variantId}=value
+        const {size}=value.deleteDetails
+        
+        const cartData = await CartModel.findOne({_id:cartId,"products.variant":variantId,"products.quantity.size":size},{
+            products:{ 
+                $elemMatch: {
+                    variant: variantId,
+                    "quantity.size": size
+                }
+            }
+        })
+        if(!cartData){
+            res.status(404).json({ message: "Cart has no matching product."})
+            return
+        }
+        const productQuantity=cartData.products[0].quantity
+        let updatedCart: ICart | null=null
+        if(productQuantity.length<=1){ // delete fully then
+            updatedCart= await CartModel.findByIdAndUpdate(cartId,{$pull:{products:{variant:variantId}}},{new:true})
+        }else{
+            updatedCart= await CartModel.findOneAndUpdate({_id:cartId,"products.variant":variantId},{$pull:{"products.$.quantity":{size}}},{new:true})
+        }
+        if(!updatedCart){
+            res.status(404).json({ message: "Failed to remove product" });
+            return
+        }
+        res.status(200).json({message:"Product removed successfully",data:updatedCart})
     }catch(error){
         console.log(error)
         res.status(500).json({message:"Server Error"})
