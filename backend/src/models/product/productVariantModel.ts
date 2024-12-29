@@ -13,6 +13,7 @@ export interface ISaleOptions{
     startDate: Date;
     endDate: Date;
     discountPercentage: number;
+    salePrice:number;
 }
 // Many attributes can be further introduced such as dimension (measurements), cost (initial), other currency, fixed sale number (not percentage), and count for purchase or rating ;)
 export interface IProductVariant extends Document{
@@ -32,23 +33,49 @@ interface IProductVariantModel extends Model<IProductVariant>{
   updateQuantity(operation:"restock"|"buy",stock:IUpdateStock[] , session:ClientSession,product?:IProduct):Promise<{success:boolean, errorMessage:string,stock?:IUpdateStock[]}>
 }
 
-const productVariantSchema = new Schema<IProductVariant>({
-    quantity: [{
-        size: {type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]},
-        quantityLeft: { type: Number, required: true, default: 0, min:[0,"Quantity cannot be negative"]}}],
-    images: [{ type: Schema.Types.ObjectId,ref:"ProductImage"}],
-    color:{type:String,required:true},
-    originalPrice:{ type: Number,required: true,min: [0,"Price cannot be negative"], },
-            isOnSale: {type:Boolean,default:false},
-            saleOptions: {type:{
-                startDate: { type: Schema.Types.Date, required: true },
-                endDate: { type: Schema.Types.Date, required: true },
-                discountPercentage: { type: Number, min: 1, max: 99 }}
-              },
-  status: {type:String, enum:["Active", "Inactive"],default:"Active"},
-  stockStatus:{type:String, enum:["In Stock","Out of Stock"],default:"In Stock"},
-  product:{type:Schema.Types.ObjectId,ref:"Product",required:true}             
-},{timestamps:true});
+const productVariantSchema = new Schema<IProductVariant>(
+  {
+    quantity: [
+      {
+        size: {
+          type: String,
+          required: true,
+          enum: ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "One-Size"],
+        },
+        quantityLeft: {
+          type: Number,
+          required: true,
+          default: 0,
+          min: [0, "Quantity cannot be negative"],
+        },
+      },
+    ],
+    images: [{ type: Schema.Types.ObjectId, ref: "ProductImage" }],
+    color: { type: String, required: true },
+    originalPrice: {
+      type: Number,
+      required: true,
+      min: [0, "Price cannot be negative"],
+    },
+    isOnSale: { type: Boolean, default: false },
+    saleOptions: {
+      type: {
+        startDate: { type: Schema.Types.Date, required: true },
+        endDate: { type: Schema.Types.Date, required: true },
+        discountPercentage: { type: Number, min: 1, max: 99, required: true },
+        salePrice: {type: Number,min: [0, "Price cannot be negative"],required: true},
+      },
+    },
+    status: { type: String, enum: ["Active", "Inactive"], default: "Active" },
+    stockStatus: {
+      type: String,
+      enum: ["In Stock", "Out of Stock"],
+      default: "In Stock",
+    },
+    product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+  },
+  { timestamps: true }
+);
 
 productVariantSchema.set("toJSON",{transform:(doc,ret)=>{
     delete ret.createdAt

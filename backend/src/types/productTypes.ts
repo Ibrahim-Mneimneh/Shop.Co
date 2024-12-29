@@ -40,10 +40,10 @@ export const addProductSchema = Joi.object<IProduct>({
   description: Joi.string().max(600).required().messages({
     "string.max": "Description cannot exceed 600 characters.",
   }),
-  category: Joi.string().valid("Men", "Women", "Unisex","Kids").required().messages({
-    "string.base": "Category must be one of: Male, Female, Kids or Unisex.",
+  category: Joi.string().valid("Men", "Women","Kids").required().messages({
+    "string.base": "Category must be one of: Male, Female or Kids.",
   }),
-  productType: Joi.string()
+  subCategory: Joi.string()
     .valid(
       "Jackets",
       "Pullover",
