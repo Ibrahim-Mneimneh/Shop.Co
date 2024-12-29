@@ -107,8 +107,8 @@ export const addProduct:RequestHandler = async (req:AuthRequest,res:Response)=>{
             res.status(400).json({ message: 'Validation failed: '+ error.details[0].message.replace(/\"/g, '') });
             return
         }
-        const {name, description,gender,category}=value
-        const product = await ProductModel.create({name,description,gender,category})
+        const {name, description,category,subCategory}=value
+        const product = await ProductModel.create({name,description,category,subCategory})
         if(!product){
             res.status(400).json({message:"Failed to add product"})
             return
@@ -245,10 +245,14 @@ export const updateVariantSale = async (req:DbSessionRequest,res:Response)=>{
                 }
             }
             // update sale percentage if its given
-            if(discountPercentage)
+            if(discountPercentage){
+                const salePrice =
+                  Math.round(
+                    product.originalPrice * (1 - discountPercentage / 100) * 100
+                  ) / 100;
                 currentSale.discountPercentage=discountPercentage
-
-            
+                currentSale.salePrice = salePrice
+            }
             await product.save({session})
             res.status(200).json({message:"Sale updated successfully"})
             return 
@@ -264,7 +268,10 @@ export const updateVariantSale = async (req:DbSessionRequest,res:Response)=>{
                 res.status(400).json({message:"Failed to add sale"})
                 return 
             }
-            product.saleOptions={startDate,endDate,discountPercentage}
+            const salePrice =Math.round(
+                product.originalPrice * (1 - discountPercentage / 100) * 100
+              ) / 100;
+            product.saleOptions={startDate,endDate,discountPercentage,salePrice}
             await product.save({session})
             res.status(200).json({message:"Sale created successfully"})
             return 
@@ -432,6 +439,12 @@ export const deleteProductVariant = async (req:DbSessionRequest,res:Response)=>{
     }
 }
 // View sales ** need original Price
+
+// View orders 
+
+// Get out of stock products
+
+// Get Products with filters (even non active) 
 
 // View purchaces
 
