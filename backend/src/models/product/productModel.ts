@@ -6,8 +6,8 @@ export interface IProduct extends Document {
     _id:Types.ObjectId,
     name:string,
     description:string,
-    gender:"Men"|"Women"|"Unisex"|"Kids",
-    category:"Jackets"|"Pullover"|"Suits"|"Pants"|"T-Shirts"|"Accessories",
+    category:"Men"|"Women"|"Unisex"|"Kids",
+    productType:"Jackets"|"Pullover"|"Suits"|"Pants"|"T-Shirts"|"Accessories",
     rating:Number,
     variants:Types.ObjectId[],
     expiresAt?:Date,
@@ -22,8 +22,8 @@ export interface IProductModel extends Model<IProduct>{
 const productSchema = new Schema<IProduct>({
     name:{type:String,required:true},
     description:{type:String, maxlength:600,required:true},
-    gender:{type:String,enum:["Men","Women","Unisex","Kids"],required:true},
-    category:{type:String,enum:["Jackets","Pullover","Suits","Pants","T-Shirts","Accessories"],required:true},
+    category:{type:String,enum:["Men","Women","Unisex","Kids"],required:true},
+    productType:{type:String,enum:["Jackets","Pullover","Suits","Pants","T-Shirts","Accessories"],required:true},
     rating:{type:Number,default:0.0,min:0.0,max:5.0},
     variants:[{type:Schema.ObjectId,ref:"ProductVariant"}],
     expiresAt:{type:Date,default: new Date(Date.now() + 15 * 60 * 1000),validate:{validator: function(value:Date){
@@ -85,9 +85,9 @@ productSchema.statics.getVariants = async function(productId: IObjectId): Promis
 
 productSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 // Indexing
-productSchema.index({ category: 1 });  // category Indexing
-productSchema.index({ gender: 1 });    // gender Indexing
-productSchema.index({ rating: -1 });    // rating Indexing
+productSchema.index({ category: 1 });  // Category Indexing
+productSchema.index({ productType: 1 });    // Product Type Indexing
+productSchema.index({ rating: -1 });    // Rating Indexing
 
 // Optional text index for search functionality
 productSchema.index({ name: 'text', description: 'text' });

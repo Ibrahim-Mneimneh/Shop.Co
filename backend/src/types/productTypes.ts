@@ -40,10 +40,10 @@ export const addProductSchema = Joi.object<IProduct>({
   description: Joi.string().max(600).required().messages({
     "string.max": "Description cannot exceed 600 characters.",
   }),
-  gender: Joi.string().valid("Men", "Women", "Unisex","Kids").required().messages({
-    "string.base": "Gender must be one of: Male, Female, Kids or Unisex.",
+  category: Joi.string().valid("Men", "Women", "Unisex","Kids").required().messages({
+    "string.base": "Category must be one of: Male, Female, Kids or Unisex.",
   }),
-  category: Joi.string()
+  productType: Joi.string()
     .valid(
       "Jackets",
       "Pullover",
@@ -54,7 +54,7 @@ export const addProductSchema = Joi.object<IProduct>({
     )
     .required()
     .messages({
-      "string.base": "Category must be one of: Jackets, Pullover, Suits, Pants, T-Shirts, Accessories.",
+      "string.base": "Product type must be one of: Jackets, Pullover, Suits, Pants, T-Shirts, Accessories.",
     }),
 })
 
