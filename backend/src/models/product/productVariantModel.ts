@@ -25,6 +25,7 @@ export interface IProductVariant extends Document{
   isOnSale: boolean;
   saleOptions?: ISaleOptions
   status: "Active" | "Inactive"
+  unitsSold:number,
   stockStatus:"In Stock" | "Out of Stock"
   product:Types.ObjectId;
 }
@@ -72,6 +73,7 @@ const productVariantSchema = new Schema<IProductVariant>(
       enum: ["In Stock", "Out of Stock"],
       default: "In Stock",
     },
+    unitsSold:{type:Number, min:0, default:0 },
     product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
   },
   { timestamps: true }
