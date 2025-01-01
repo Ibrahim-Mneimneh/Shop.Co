@@ -183,22 +183,23 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       });
       aggregationPipeline.push({
         $match: {
-          "$variant.quantity.size": size,
+          "variant.quantity.size": size,
         },
       });
     }
     if (sortField) {
       // Add price and rating(!sales)****************************************
-      const sortObj: { price?: number; rating?: number } = {};
+      const sortObj: { price?: number; rating?: number ; "variant.unitsSold"?:number} = {};
 
       if (sortOrder) {
-        if (sortField == "rating")
-          sortObj.rating = sortOrder === "asc" ? 1 : -1;
+        if (sortField == "rating") sortObj.rating = sortOrder === "asc" ? 1 : -1;
         if (sortField === "price") sortObj.price = sortOrder === "asc" ? 1 : -1;
+        if (sortField === "popularity") sortObj["variant.unitsSold"] = sortOrder === "asc" ? 1 : -1;
       } else {
-        // SortOrder not given Assume ascending
+        // SortOrder not given assume ascending
         if (sortField == "rating") sortObj.rating = 1;
         if (sortField === "price") sortObj.price = 1;
+        if (sortField === "popularity") sortObj["variant.unitsSold"] = 1;
       }
 
       aggregationPipeline.push({
@@ -221,13 +222,6 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       },
     });
     // we need to recombine the variants (after quantity unwind)
-    if (size) {
-      aggregationPipeline.push({
-        $group: {
-          _id: "$_id",
-        },
-      });
-    }
     // add pageNum & limit & Get elements
     aggregationPipeline.push({
       $facet: {
