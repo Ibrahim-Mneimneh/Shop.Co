@@ -67,6 +67,8 @@ export const getProduct = async (req: Request, res: Response) => {
 export const getFilteredProducts = async (req: Request, res: Response) => {
   try {
     const query = req.query;
+    const sizeQuery = req.query.size; 
+    req.query.size = (sizeQuery && typeof sizeQuery === "string") ? sizeQuery.split(",") : undefined;
     const { value,error } = filterProductsSchema.validate(
       {
         filterDetails:query,
@@ -95,7 +97,7 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       sortField,
       sortOrder,
     } = value.filterDetails;
-    // console.log(typeof onSale)
+    console.log(typeof size)
     // Configure skip based on page
     const limit: number = 24; // Define page limit
     const skip = (page - 1) * limit;
@@ -183,12 +185,38 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       });
       aggregationPipeline.push({
         $match: {
-          "variant.quantity.size": size,
+          "variant.quantity.size": {$in:size}
         },
       });
+      if (size && size.length > 0) {
+        aggregationPipeline.push({
+          $group: {
+            _id: "$variant._id",
+            variant: {
+              $first: {
+                _id: "$variant._id",
+                isOnSale: "$variant.isOnSale",
+                unitsSold:"$variant.unitsSold",
+                saleOptions: {
+                  endDate: "$variant.saleOptions.endDate",
+                  discountPercentage: "$variant.saleOptions.discountPercentage",
+                },
+              },
+            },
+            name: { $first: "$name" },
+            category: { $first: "$category" },
+            subCategory: { $first: "$subCategory" },
+            rating: { $first: "$rating" },
+            price: { $first: "$price" },
+            isOnSale: { $first: "$isOnSale" },
+            stockStatus: { $first: "$variant.stockStatus" },
+
+          },
+        });
+      }
     }
+
     if (sortField) {
-      // Add price and rating(!sales)****************************************
       const sortObj: { price?: number; rating?: number ; "variant.unitsSold"?:number} = {};
 
       if (sortOrder) {
@@ -215,13 +243,26 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
         subCategory: 1,
         rating: 1,
         price: 1,
-        "variant.isOnSale": 1,
-        "variant.saleOptions.endDate": 1,
-        "variant.saleOptions.discountPercentage": 1,
-        "variant.stockStatus": 1,
+        isOnSale: "$variant.isOnSale",
+        stockStatus: "$variant.stockStatus",
+        saleEndDate: {
+          $cond: {
+            if: { $eq: ["$variant.isOnSale", true] },
+            then: { $ifNull: ["$variant.saleOptions.endDate", null] },
+            else: null,
+          },
+        },
+        discountPercentage: {
+          $cond: {
+            if: { $eq: ["$variant.isOnSale", true] },
+            then: {
+              $ifNull: ["$variant.saleOptions.discountPercentage", null],
+            },
+            else: null,
+          },
+        },
       },
     });
-    // we need to recombine the variants (after quantity unwind)
     // add pageNum & limit & Get elements
     aggregationPipeline.push({
       $facet: {
