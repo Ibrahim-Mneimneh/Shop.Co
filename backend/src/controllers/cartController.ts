@@ -4,8 +4,8 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import { CartModel, ICart } from "../models/cartModel";
 import { addToCartSchema, deleteCartProductSchema, updateCartQuantitySchema } from "../types/cartControllerTypes";
 import { IProductVariant, ProductVariantModel } from "../models/product/productVariantModel";
-import { IObjectId, IOrderQuantity, IProductRef } from "../types/modalTypes";
-import { valid } from "joi";
+import { IOrderQuantity } from "../types/modalTypes";
+
 
 // get Cart 
 export const getCart: RequestHandler  =async (req:AuthRequest,res:Response)=>{
@@ -33,14 +33,14 @@ export const getCart: RequestHandler  =async (req:AuthRequest,res:Response)=>{
             const originalPrice: number = variant.originalPrice;
             if(quantity.length===1){
                 if(variant.isOnSale && variant.saleOptions){
-                totalPrice+=(originalPrice*((100-variant.saleOptions.discountPercentage)/100))*quantity[0].quantity
+                totalPrice += variant.saleOptions.salePrice * quantity[0].quantity;
                 }else{
                     totalPrice+=(originalPrice*quantity[0].quantity)
                 }
             }else{
                quantity.forEach(quantity=>{
                 if(variant.isOnSale && variant.saleOptions){
-                totalPrice+=(originalPrice*((100-variant.saleOptions.discountPercentage)/100))*quantity.quantity
+                totalPrice += variant.saleOptions.salePrice* quantity.quantity;
                 }else{
                     totalPrice+=(originalPrice*quantity.quantity)
                 }
