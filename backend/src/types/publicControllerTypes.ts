@@ -51,17 +51,19 @@ export const filterProductsSchema = Joi.object({
     name: Joi.string(),
     onSale: Joi.boolean().truthy("true").falsy("false").optional(),
     inStock: Joi.string().valid("In Stock", "Out of Stock"),
-    size: Joi.string().valid(
-      "XXS",
-      "XS",
-      "S",
-      "M",
-      "L",
-      "XL",
-      "XXL",
-      "XXXL",
-      "One-Size"
-    ),
+    size: Joi.array().items(
+      Joi.string().valid(
+        "XXS",
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "One-Size"
+      )
+    ).min(1).max(4),
     rating: Joi.string()
       .custom((value, helpers) => {
         const number = Number(value);
