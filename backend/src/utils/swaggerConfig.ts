@@ -4,9 +4,9 @@ const options: Options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Shop.co",
-      version: "1.0.0",
-      description: "API Documentation for my Shop.co Backend",
+      title: "Shop.Co",
+      version: "v1",
+      description: "API Documentation for Shop.Co Backend",
     },
     tags: [
       {
@@ -14,17 +14,22 @@ const options: Options = {
         description: "Operations related to user registration and login.",
       },
       {
-        name: "Authorization",
-        description: "Operations related to user login and authentication.",
+        name: "Public",
+        description:
+          "Operations related to Viewing, Searching or Filtering Products.",
       },
       {
-        name: "Cart Products",
-        description: "Operations related to the products in the user cart.",
+        name: "Admin",
+        description: "Operations related to Products.",
+      },
+      {
+        name: "Admin Analytics",
+        description: "Operations related to Shop.Co analytics.",
       },
     ],
     servers: [
       {
-        url: "http://localhost:4000", // Change this later
+        url: "http://localhost:4000/api/",
       },
     ],
   },
