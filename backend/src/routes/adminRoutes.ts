@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { addProduct, addProductImage, addProductVariant, adminLogin, deleteProduct, deleteProductVariant, deleteVariantSale, restockProduct, updateVariantSale } from '../controllers/adminController';
+import { addProduct, addProductImage, addProductVariant, adminLogin, deleteProduct, deleteProductVariant, deleteVariantSale, getProduct, restockProduct, updateVariantSale } from '../controllers/adminController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { sessionMiddleware } from '../middleware/sessionMiddleware';
 
@@ -15,6 +15,8 @@ router.use("/",authMiddleware)
 router.post("/products",addProduct)
 // Add Product Images
 router.post("/products/images",addProductImage)
+// Get Product & its variants
+router.get("/products/:productId",getProduct) // *********** Modify for later 
 // Add varinat Sale or update it
 router.patch("/products/variants/sales/:variantId",sessionMiddleware,updateVariantSale)
 // Delete variant Sale
