@@ -15,6 +15,7 @@ import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, up
 import { IProductVariant, IQuantity, ProductVariantModel } from "../models/product/productVariantModel";
 import { DbSessionRequest } from "../middleware/sessionMiddleware";
 import { EndSaleModel, StartSaleModel } from "../models/product/productSale";
+import { productIdSchema } from "../types/publicControllerTypes";
 
 
 // Admin login
@@ -438,6 +439,44 @@ export const deleteProductVariant = async (req:DbSessionRequest,res:Response)=>{
         res.status(500).json({message:"Server Error"})
     }
 }
+
+// View product & its variants
+export const getProduct = async (req: Request, res: Response) => {
+  try {
+    // get id from params
+    const { error, value } = productIdSchema.validate({
+      productId: req.params.productId,
+    });
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
+      return;
+    }
+    // fetch for the product & variants
+    const productDetails = await ProductModel.getVariants(
+      value.productId,
+      "Active",
+      { status: "Active" }
+    );
+    if (productDetails.success && productDetails.product) {
+      const product = productDetails.product;
+      res.status(200).json({
+        message: "Product details loaded successfully",
+        data: product,
+      });
+      return;
+    }
+    res.status(400).json({ message: productDetails.errorMessage });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
 // View sales ** need original Price
 
 // View orders 
