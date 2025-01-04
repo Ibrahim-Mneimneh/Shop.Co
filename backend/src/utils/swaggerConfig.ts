@@ -33,6 +33,15 @@ const options: Options = {
       },
     ],
   },
+  components: {
+    securitySchemes: {
+      BearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+      },
+    },
+  },
   apis: ["./src/routes/*.ts"],
 };
 
