@@ -178,3 +178,17 @@ export const getUser = async (req:AuthRequest, res:Response)=>{
     res.status(500).json({message:"Server Error"})
   }
 }
+
+// Make an order
+
+// Get orders
+
+// Get order
+
+// ? Contact Support 
+
+// ? Send complain or return request
+
+// Update profile details
+
+// Get feed

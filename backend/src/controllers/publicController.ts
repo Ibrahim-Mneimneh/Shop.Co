@@ -4,7 +4,12 @@ import mongoose, { Types } from "mongoose";
 
 import { ProductModel } from "../models/product/productModel";
 import { ProductImageModel } from "../models/product/productImageModel";
-import { filterProductsSchema } from "../types/publicControllerTypes";
+import {
+  filterProductsSchema,
+  productIdSchema,
+  variantIdSchema,
+} from "../types/publicControllerTypes";
+import { ProductVariantModel } from "../models/product/productVariantModel";
 
 export const getImage: RequestHandler = async (req: Request, res: Response) => {
   try {
@@ -31,32 +36,47 @@ export const getImage: RequestHandler = async (req: Request, res: Response) => {
   }
 };
 
-// View product
-export const getProduct = async (req: Request, res: Response) => {
+export const getVariant = async (req: Request, res: Response) => {
   try {
-    // get id prom params
-    const isValidProductId: boolean = Types.ObjectId.isValid(
-      req.params.productId
-    );
-    if (!isValidProductId) {
-      res.status(404).json({ message: "Invalid ProductId in URL" });
-      return;
-    }
-    const productId: IObjectId = new mongoose.Types.ObjectId(
-      req.params.productId
-    );
-    // fetch for the product & variants
-    const variant = await ProductModel.getVariants(productId);
-    if (variant.success && variant.productVariant && variant.product) {
-      const product = variant.product.toJSON();
-      const productData = { ...product, variants: variant.productVariant };
-      res.status(200).json({
-        message: "Product details sent successfully",
-        data: productData,
+    // get id from params
+    const { error, value } = variantIdSchema.validate({
+      variantId: req.params.variantId,
+    });
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
       });
       return;
     }
-    res.status(400).json({ message: variant.errorMessage });
+    const { variantId } = value;
+    const variantData = await ProductVariantModel.findOne({
+      _id: variantId,
+      status: "Active",
+    });
+    if (!variantData) {
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+    // get other variants and their images
+    const productData = await ProductModel.findById(
+      variantData.product
+    ).populate({
+      path: "variants",
+      match: { status: "Active", _id: { $ne: variantId } },
+      options: { limit: 1 },
+      select: "_id images",
+    });
+    if (!productData) {
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+    const filteredProductData =productData.toJSON()
+    const filteredVariantData = variantData.toJSON();
+    res.status(200).json({
+      message: "Product details available",
+      data: { ...filteredProductData, ...filteredVariantData},
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
@@ -67,11 +87,14 @@ export const getProduct = async (req: Request, res: Response) => {
 export const getFilteredProducts = async (req: Request, res: Response) => {
   try {
     const query = req.query;
-    const sizeQuery = req.query.size; 
-    req.query.size = (sizeQuery && typeof sizeQuery === "string") ? sizeQuery.split(",") : undefined;
-    const { value,error } = filterProductsSchema.validate(
+    const sizeQuery = req.query.size;
+    req.query.size =
+      sizeQuery && typeof sizeQuery === "string"
+        ? sizeQuery.split(",")
+        : undefined;
+    const { value, error } = filterProductsSchema.validate(
       {
-        filterDetails:query,
+        filterDetails: query,
       },
       { stripUnknown: true }
     );
@@ -97,7 +120,6 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       sortField,
       sortOrder,
     } = value.filterDetails;
-    console.log(typeof size)
     // Configure skip based on page
     const limit: number = 24; // Define page limit
     const skip = (page - 1) * limit;
@@ -111,17 +133,15 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
     if (rating) productFilter.rating = { $gte: rating };
 
     if (color) variantFilter["variant.color"] = color;
-    if (onSale) variantFilter["variant.isOnSale"] = onSale
+    if (onSale) variantFilter["variant.isOnSale"] = onSale;
     if (inStock) variantFilter["variant.stockStatus"] = inStock === "In Stock";
 
     if (minPrice || maxPrice) {
-      variantFilter.price={}
-      if (minPrice) variantFilter.price.$gte= minPrice
-      if (maxPrice) variantFilter.price.$lte=maxPrice
+      variantFilter.price = {};
+      if (minPrice) variantFilter.price.$gte = minPrice;
+      if (maxPrice) variantFilter.price.$lte = maxPrice;
     }
 
-    //console.log(productFilter)
-    //console.log(variantFilter)
     const aggregationPipeline: any[] = [
       { $match: productFilter },
       {
@@ -185,10 +205,10 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       });
       aggregationPipeline.push({
         $match: {
-          "variant.quantity.size": {$in:size}
+          "variant.quantity.size": { $in: size },
         },
       });
-      if (size && size.length > 0) {
+      if (size.length > 0) {
         aggregationPipeline.push({
           $group: {
             _id: "$variant._id",
@@ -196,11 +216,12 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
               $first: {
                 _id: "$variant._id",
                 isOnSale: "$variant.isOnSale",
-                unitsSold:"$variant.unitsSold",
+                unitsSold: "$variant.unitsSold",
                 saleOptions: {
                   endDate: "$variant.saleOptions.endDate",
                   discountPercentage: "$variant.saleOptions.discountPercentage",
                 },
+                images: "$variant.images",
               },
             },
             name: { $first: "$name" },
@@ -210,19 +231,24 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
             price: { $first: "$price" },
             isOnSale: { $first: "$isOnSale" },
             stockStatus: { $first: "$variant.stockStatus" },
-
           },
         });
       }
     }
 
     if (sortField) {
-      const sortObj: { price?: number; rating?: number ; "variant.unitsSold"?:number} = {};
+      const sortObj: {
+        price?: number;
+        rating?: number;
+        "variant.unitsSold"?: number;
+      } = {};
 
       if (sortOrder) {
-        if (sortField == "rating") sortObj.rating = sortOrder === "asc" ? 1 : -1;
+        if (sortField == "rating")
+          sortObj.rating = sortOrder === "asc" ? 1 : -1;
         if (sortField === "price") sortObj.price = sortOrder === "asc" ? 1 : -1;
-        if (sortField === "popularity") sortObj["variant.unitsSold"] = sortOrder === "asc" ? 1 : -1;
+        if (sortField === "popularity")
+          sortObj["variant.unitsSold"] = sortOrder === "asc" ? 1 : -1;
       } else {
         // SortOrder not given assume ascending
         if (sortField == "rating") sortObj.rating = 1;
@@ -243,6 +269,7 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
         subCategory: 1,
         rating: 1,
         price: 1,
+        images: "$variant.images",
         isOnSale: "$variant.isOnSale",
         stockStatus: "$variant.stockStatus",
         saleEndDate: {
@@ -272,19 +299,31 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
     });
 
     // Execute aggregation
-    const filteredProducts:any= await ProductModel.aggregate(aggregationPipeline);
-    console.log(filteredProducts[0].result);
-    if(filteredProducts[0] && filteredProducts[0].result.length===0){
-        res.status(404).json({message:"No matching products found"})
-        return
+    const filteredProducts: any = await ProductModel.aggregate(
+      aggregationPipeline
+    );
+    if (filteredProducts[0] && filteredProducts[0].result.length === 0) {
+      res.status(404).json({ message: "No matching products found" });
+      return;
     }
     const totalCount = filteredProducts[0].totalCount[0].count;
-    const totalPages:number= totalCount<=limit?1:Math.ceil(totalCount/limit)
-    if(page>totalPages){
-        res.status(400).json({ message: "Selected page number exceeds available totalPages: "+totalPages });
-        return;
+    const totalPages: number =
+      totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
+    if (page > totalPages) {
+      res.status(400).json({
+        message:
+          "Selected page number exceeds available totalPages: " + totalPages,
+      });
+      return;
     }
-    res.status(200).json({ message: "Products",data:{totalPages,currentPage:page,products:filteredProducts[0].result} });
+    res.status(200).json({
+      message: "Matching products found",
+      data: {
+        totalPages,
+        currentPage: page,
+        products: filteredProducts[0].result,
+      },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
