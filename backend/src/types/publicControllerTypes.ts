@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { validIdSchema } from "./productTypes";
 
 export const filterProductsSchema = Joi.object({
   filterDetails: {
@@ -96,4 +97,17 @@ export const filterProductsSchema = Joi.object({
     sortField: Joi.string().valid("price", "popularity", "rating").optional(),
     sortOrder: Joi.string().valid("asc", "desc").optional(),
   },
+});
+
+export const productIdSchema = Joi.object({
+  productId:validIdSchema
+})
+
+export const variantIdSchema = Joi.object({
+  variantId: validIdSchema,
+});
+
+export const IdSchema = Joi.object({
+  variantId: validIdSchema,
+  productId: validIdSchema,
 });

@@ -22,7 +22,7 @@ export interface IDetail {
 export interface IUpdateStock{
   variant:IObjectId | string,
   product?:IProduct,
-  details:IDetail[]
+  quantity:IDetail[]
 }
 
 // Check size and validity of base64Images
