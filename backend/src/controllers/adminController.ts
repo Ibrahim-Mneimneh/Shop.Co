@@ -337,33 +337,35 @@ export const deleteVariantSale = async (req:DbSessionRequest,res:Response)=>{
 
 // Update Variant stock (Add items) {size, quantity}
 export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
-    try{
-        const data:{stock:{variant:string,details:IOrderQuantity[]}[],productId: string} =  {productId:req.params.productId,stock:req.body}
-        
+    try{ 
         // validate productDetails
-        const { error, value } = updateQuantitySchema.validate(data);
+        const { error, value } = updateQuantitySchema.validate({
+          productId: req.params.productId,
+          details: req.body,
+        });
         if(error){
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
         }
-        const {stock,productId}:{stock:IUpdateStock[],productId:IObjectId}=value
+        const {productId}:{productId:IObjectId}=value
+        const stock:IUpdateStock[]= value.details.stock
+
         const product = await ProductModel.findById(productId)
         if(!product){
             res.status(404).json({message:"Product not found"})
             return
         }
-        // ensure the variants belong to the same product & change type
-        const variantIdError=stock.map((stockElement)=>{
-            const variantId:IObjectId= new mongoose.Types.ObjectId(stockElement.variant)
-            if(!product.variants.includes(variantId)){ //if it doesn't belongs to same product
-                return `Invalid product variant: ${stockElement.variant}` 
-            }
-            stockElement.variant=variantId // update to objectId
-            return null
+        // ensure the variants belong to the same product
+        const variantUnavailable=stock.map((stockElement)=>{
+          // if it doesn't belongs to same product
+          if (!product.variants.includes(stockElement.variant as IObjectId)) {
+            return `Invalid variant ${stockElement.variant}`;
+          }
+          return null;
         }).filter(errorMessage => errorMessage !== null)
-        if(variantIdError.length>0){
-            res.status(400).json({message:"Invalid product variants"})
-            return
+        if (variantUnavailable.length > 0) {
+          res.status(400).json({ message: "Invalid product variants" });
+          return;
         }
         const {success,errorMessage}= await ProductVariantModel.updateQuantity("restock",stock,req.dbSession as mongoose.ClientSession)
         if(!success){
@@ -474,8 +476,6 @@ export const getProduct = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
 
 // View sales ** need original Price
 
