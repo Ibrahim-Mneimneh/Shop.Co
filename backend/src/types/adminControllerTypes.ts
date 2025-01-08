@@ -1,6 +1,7 @@
 import imageSize from "image-size";
-import { IObjectId } from "./modalTypes";
+import { IObjectId, IOrderQuantity } from "./modalTypes";
 import { IProduct } from "../models/product/productModel";
+import { IQuantity } from "../models/product/productVariantModel";
 
 export interface IBase64Image {
   type:string,
@@ -10,19 +11,6 @@ export interface IBase64Image {
 export interface IIsValidBase64 extends IBase64Image{
   success:boolean,
   base64ErrorMessage:string,
-}
-
-export interface IDetail {
-  size:string,
-  quantity:number,
-  success?:boolean,
-  message?:string
-}
-
-export interface IUpdateStock{
-  variant:IObjectId | string,
-  product?:IProduct,
-  quantity:IDetail[]
 }
 
 // Check size and validity of base64Images
