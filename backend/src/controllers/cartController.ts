@@ -6,7 +6,6 @@ import { addToCartSchema, deleteCartProductSchema, updateCartQuantitySchema } fr
 import { IProductVariant, ProductVariantModel } from "../models/product/productVariantModel";
 import { IOrderQuantity } from "../types/modalTypes";
 
-
 // get Cart 
 export const getCart: RequestHandler  =async (req:AuthRequest,res:Response)=>{
     try{
@@ -26,9 +25,10 @@ export const getCart: RequestHandler  =async (req:AuthRequest,res:Response)=>{
             res.status(200).json({message:"Cart is empty",cartData:{}})
             return
         }
+
         let totalPrice = 0
-        cartData.products.forEach((product)=>{
-            const variant = product.variant as IProductVariant
+        cartData.toObject().products.forEach((product:{variant:IProductVariant,quantity:IOrderQuantity[]})=>{
+            const variant = product.variant
             const quantity:IOrderQuantity[]= product.quantity
             const originalPrice: number = variant.originalPrice;
             if(quantity.length===1){
@@ -48,7 +48,6 @@ export const getCart: RequestHandler  =async (req:AuthRequest,res:Response)=>{
             }
         })
         totalPrice = parseFloat(totalPrice.toFixed(2));
-    
 
         res.status(200).json({message:"Successful",data:{cartData,totalPrice}})
         
@@ -87,7 +86,7 @@ export const addToCart:RequestHandler =async (req:AuthRequest,res:Response)=>{
         
         const cartData= await CartModel.findById(cartId,{products:{$elemMatch:{variant:variantId}}})
         if(!cartData){
-            res.status(404).json({ message: "Cart not found"})
+            res.status(402).json({ message: "Cart not found"})
             return
         }
 
