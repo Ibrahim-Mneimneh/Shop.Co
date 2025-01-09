@@ -47,7 +47,11 @@ interface IProductVariantModel extends Model<IProductVariant> {
     operation: "restock" | "purchase",
     stock: IProductRef[],
     session: ClientSession
-  ): Promise<{ success: boolean; errorMessage: string; stock?: IProductRef[] }>;
+  ): Promise<{
+    success: boolean;
+    errorMessage: string;
+    order?: { totalPrice: number; products: IProductRef[] };
+  }>;
 }
 
 const productVariantSchema = new Schema<IProductVariant>(
@@ -128,9 +132,7 @@ productVariantSchema.statics.addVariant = async function (
 }> {
   try {
     // convert imageIds to ObjectId exclude duplicate images from linking
-    const imageIds: IObjectId[] = [...new Set(variant.images)].map(
-      (imageId) => new Types.ObjectId(imageId)
-    );
+    const imageIds: IObjectId[] = [...new Set(variant.images)];
     // Check images first
     let imageIdsToLink: IObjectId[] = [];
     const variantImageError = (
@@ -184,7 +186,7 @@ productVariantSchema.statics.updateQuantity = async function (
   operation: "restock" | "purchase",
   stock: IProductRef[],
   session: ClientSession
-): Promise<{ success: boolean; errorMessage: string; stock?: IProductRef[] }> {
+): Promise<{ success: boolean; errorMessage: string; order?: {totalPrice:number,products:IProductRef[]}}> {
   try {
     // Check for the type of operation
     if (operation === "restock") {
@@ -228,11 +230,14 @@ productVariantSchema.statics.updateQuantity = async function (
       return { success: true, errorMessage: "" };
     } else if (operation === "purchase") {
       // ensure that at least one item is purchased
-      const purchaseErrors: {variant:IObjectId,data:IOrderQuantity}[] = [];
+      const purchaseErrors: { variant: IObjectId; data: IOrderQuantity }[] = [];
       let purchaseFlag: boolean = false;
+      let totalPrice:number=0
+      // loop over products from cart
       for (let productVariant of stock) {
         const { variant, quantity } = productVariant;
         const elementOperations = [];
+        // loop over variant sizes (for a user)
         for (let elemQuantity of quantity) {
           const { size, quantity } = elemQuantity;
           // Fetch the variant with each item
@@ -240,29 +245,37 @@ productVariantSchema.statics.updateQuantity = async function (
             _id: variant,
             "quantity.size": size,
           });
-
           // size isnt available
           if (!variantData) {
             elemQuantity.success = false;
             elemQuantity.message = `Out of Stock`;
-            purchaseErrors.push({variant,data:elemQuantity});
+            purchaseErrors.push({ variant, data: elemQuantity });
             continue; // move to next quantity
           }
           if (variantData.status !== "Active") {
             elemQuantity.success = false;
             elemQuantity.message = `Product not available`;
-            purchaseErrors.push({variant,data:elemQuantity});
+            purchaseErrors.push({ variant, data: elemQuantity });
             continue; // move to next quantity
+          }
+          // Add price attribute if not added 
+          if (!productVariant.price) {
+            productVariant.price = variantData.isOnSale
+              ? variantData.saleOptions?.salePrice || variantData.originalPrice
+              : variantData.originalPrice;
           }
           // get size details and check if the requested quantity is bigger than the
           const sizeDetail = variantData.quantity.find((q) => q.size === size);
           if (sizeDetail && sizeDetail.quantityLeft < quantity) {
             elemQuantity.success = false;
-            elemQuantity.message =`insufficient items left: ${sizeDetail.quantityLeft} left`;
-            purchaseErrors.push({variant,data:elemQuantity});
+            elemQuantity.message = `insufficient items left: ${sizeDetail.quantityLeft} left`;
+            purchaseErrors.push({ variant, data: elemQuantity });
             continue; // move to next detail
           }
-
+          // Add success attribute, if update fails wont be returned
+          // Add price to totalPrice only successful
+          elemQuantity.success = true;
+          totalPrice += productVariant.price*quantity
           elementOperations.push({
             updateOne: {
               filter: { _id: variant, "quantity.size": size },
@@ -290,13 +303,16 @@ productVariantSchema.statics.updateQuantity = async function (
       // if no elements match or if some do
       if (purchaseErrors.length > 0 || !purchaseFlag) {
         const errorMessage = purchaseErrors
-          .map((err) => `${err.variant} of size: (${err.data.size}): ${err.data.message}`)
+          .map(
+            (err) =>
+              `${err.variant} of size: (${err.data.size}): ${err.data.message}`
+          )
           .join(". ");
 
-        return { success: purchaseFlag, errorMessage, stock };
+        return { success: purchaseFlag, errorMessage, order:{products:stock,totalPrice} };
       }
 
-      return { success: true, errorMessage: "", stock };
+      return { success: true, errorMessage: "", order:{products:stock,totalPrice} };
     } else {
       return { success: false, errorMessage: "Invalid operation" };
     }

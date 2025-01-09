@@ -1,14 +1,12 @@
 import { Request, RequestHandler, Response, } from "express";
 import bcrypt from "bcryptjs"
-import mongoose, { isValidObjectId, Types } from "mongoose";
-
 
 import { loginSchema } from "./userController";
 import { UserModel } from "../models/userModel";
 import { jwtGenerator } from "./authController";
-import { ClientSession, IObjectId, IOrderQuantity } from "../types/modalTypes";
+import { ClientSession, IObjectId, IOrderQuantity, IProductRef } from "../types/modalTypes";
 import { AuthRequest } from "../middleware/authMiddleware";
-import { IBase64Image, IIsValidBase64, isValidBase64, IUpdateStock } from "../types/adminControllerTypes";
+import { IBase64Image, IIsValidBase64, isValidBase64 } from "../types/adminControllerTypes";
 import { ProductImageModel } from "../models/product/productImageModel";
 import { IProduct, ProductModel } from "../models/product/productModel";
 import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, updateQuantitySchema, updateVariantSaleSchema, validIdSchema } from "../types/productTypes";
@@ -348,7 +346,7 @@ export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
             return
         }
         const {productId}:{productId:IObjectId}=value
-        const stock:IUpdateStock[]= value.details.stock
+        const stock:IProductRef[]= value.details.stock
 
         const product = await ProductModel.findById(productId)
         if(!product){
@@ -367,7 +365,7 @@ export const restockProduct = async (req:DbSessionRequest,res:Response)=>{
           res.status(400).json({ message: "Invalid product variants" });
           return;
         }
-        const {success,errorMessage}= await ProductVariantModel.updateQuantity("restock",stock,req.dbSession as mongoose.ClientSession)
+        const {success,errorMessage}= await ProductVariantModel.updateQuantity("restock",stock,req.dbSession as ClientSession)
         if(!success){
             res.status(400).json({message:`Failed to restock '${product.name}' of id: ${errorMessage}`})
             return
