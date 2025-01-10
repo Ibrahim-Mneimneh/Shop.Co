@@ -7,6 +7,7 @@ export interface IOrder extends Document {
   user: IObjectId;
   products: IProductRef;
   totalPrice: number;
+  totalCost:number;
   paymentStatus: "Pending" | "Complete";
   deliveryStatus: "Pending"|"In-delivery"|"Delivered"
   expiresAt?:Date
@@ -17,16 +18,21 @@ const orderSchema = new Schema<IOrder>(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     products: [
       {
-        productId: {
+        variant: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
           required: true,
         },
-        quantity: { type: Number, required: true },
+        quantity: [{
+            quantity:{type:Number,required:true,min:[1,"Quantity must be at least 1"]},
+            size:{type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]},
+        }],
         price: { type: Number, required: true },
+        cost: { type: Number, required: true },
       },
     ],
     totalPrice: { type: Number, required: true },
+    totalCost: { type: Number, required: true },
     deliveryStatus: {
       type: String,
       default: "Pending",
@@ -37,7 +43,7 @@ const orderSchema = new Schema<IOrder>(
       default: "Pending",
       enum: ["Pending", "Complete"],
     },
-    expiresAt:{type:Date}
+    expiresAt: { type: Date },
   },
   { timestamps: true }
 );
