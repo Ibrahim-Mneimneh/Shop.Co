@@ -5,7 +5,7 @@ import mongoose, {
   Schema,
   Types,
 } from "mongoose";
-import { IObjectId, IOrderQuantity, IProductRef } from "../../types/modalTypes";
+import { IObjectId, IOrderQuantity, IProductRef, IToJSONOptions } from "../../types/modalTypes";
 import { ProductImageModel } from "../product/productImageModel";
 import { console } from "inspector";
 
@@ -26,6 +26,7 @@ export interface IProductVariant extends Document {
   quantity: IQuantity[];
   images: Types.ObjectId[];
   originalPrice: number;
+  costPrice:number;
   isOnSale: boolean;
   saleOptions?: ISaleOptions;
   status: "Active" | "Inactive";
@@ -78,6 +79,11 @@ const productVariantSchema = new Schema<IProductVariant>(
       required: true,
       min: [0, "Price cannot be negative"],
     },
+    costPrice: {
+      type: Number,
+      required: true,
+      min: [0, "Price cannot be negative"],
+    },
     isOnSale: { type: Boolean, default: false },
     saleOptions: {
       type: {
@@ -104,7 +110,7 @@ const productVariantSchema = new Schema<IProductVariant>(
 );
 
 productVariantSchema.set("toJSON", {
-  transform: (doc, ret) => {
+  transform: (doc, ret, options: IToJSONOptions) => {
     delete ret.createdAt;
     delete ret.updatedAt;
     delete ret.status;
@@ -117,6 +123,9 @@ productVariantSchema.set("toJSON", {
     }
     delete ret.unitsSold;
     delete ret.product;
+    if (!options.role || options.role !== "admin"){
+      delete ret.costPrice;
+    }
     return ret;
   },
 });
@@ -233,6 +242,7 @@ productVariantSchema.statics.updateQuantity = async function (
       const purchaseErrors: { variant: IObjectId; data: IOrderQuantity }[] = [];
       let purchaseFlag: boolean = false;
       let totalPrice:number=0
+      let total
       // loop over products from cart
       for (let productVariant of stock) {
         const { variant, quantity } = productVariant;
