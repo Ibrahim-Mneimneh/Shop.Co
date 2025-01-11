@@ -26,7 +26,7 @@ export interface IProductVariant extends Document {
   quantity: IQuantity[];
   images: Types.ObjectId[];
   originalPrice: number;
-  costPrice:number;
+  cost:number;
   isOnSale: boolean;
   saleOptions?: ISaleOptions;
   status: "Active" | "Inactive";
@@ -51,7 +51,7 @@ interface IProductVariantModel extends Model<IProductVariant> {
   ): Promise<{
     success: boolean;
     errorMessage: string;
-    order?: { totalPrice: number; products: IProductRef[] };
+    order?: { totalPrice: number; totalCost:number; products: IProductRef[] };
   }>;
 }
 
@@ -79,7 +79,7 @@ const productVariantSchema = new Schema<IProductVariant>(
       required: true,
       min: [0, "Price cannot be negative"],
     },
-    costPrice: {
+    cost: {
       type: Number,
       required: true,
       min: [0, "Price cannot be negative"],
@@ -124,7 +124,7 @@ productVariantSchema.set("toJSON", {
     delete ret.unitsSold;
     delete ret.product;
     if (!options.role || options.role !== "admin"){
-      delete ret.costPrice;
+      delete ret.cost;
     }
     return ret;
   },
@@ -195,7 +195,7 @@ productVariantSchema.statics.updateQuantity = async function (
   operation: "restock" | "purchase",
   stock: IProductRef[],
   session: ClientSession
-): Promise<{ success: boolean; errorMessage: string; order?: {totalPrice:number,products:IProductRef[]}}> {
+): Promise<{ success: boolean; errorMessage: string; order?: {totalPrice:number, totalCost :number,products:IProductRef[]}}> {
   try {
     // Check for the type of operation
     if (operation === "restock") {
@@ -238,11 +238,12 @@ productVariantSchema.statics.updateQuantity = async function (
       }
       return { success: true, errorMessage: "" };
     } else if (operation === "purchase") {
-      // ensure that at least one item is purchased
+      // Save prices & allocate available products
       const purchaseErrors: { variant: IObjectId; data: IOrderQuantity }[] = [];
+      // ensure that at least one item is purchased
       let purchaseFlag: boolean = false;
-      let totalPrice:number=0
-      let total
+      let totalPrice: number = 0;
+      let totalCost: number = 0;
       // loop over products from cart
       for (let productVariant of stock) {
         const { variant, quantity } = productVariant;
@@ -268,12 +269,17 @@ productVariantSchema.statics.updateQuantity = async function (
             purchaseErrors.push({ variant, data: elemQuantity });
             continue; // move to next quantity
           }
-          // Add price attribute if not added 
+          // Add price attribute if not added
           if (!productVariant.price) {
             productVariant.price = variantData.isOnSale
               ? variantData.saleOptions?.salePrice || variantData.originalPrice
               : variantData.originalPrice;
           }
+          // Add cost attribute if not added
+          if (!productVariant.cost) {
+            productVariant.cost = variantData.cost;
+          }
+
           // get size details and check if the requested quantity is bigger than the
           const sizeDetail = variantData.quantity.find((q) => q.size === size);
           if (sizeDetail && sizeDetail.quantityLeft < quantity) {
@@ -285,7 +291,8 @@ productVariantSchema.statics.updateQuantity = async function (
           // Add success attribute, if update fails wont be returned
           // Add price to totalPrice only successful
           elemQuantity.success = true;
-          totalPrice += productVariant.price*quantity
+          totalPrice += productVariant.price * quantity;
+          totalCost += variantData.cost * quantity;
           elementOperations.push({
             updateOne: {
               filter: { _id: variant, "quantity.size": size },
@@ -319,10 +326,18 @@ productVariantSchema.statics.updateQuantity = async function (
           )
           .join(". ");
 
-        return { success: purchaseFlag, errorMessage, order:{products:stock,totalPrice} };
+        return {
+          success: purchaseFlag,
+          errorMessage,
+          order: { products: stock, totalPrice, totalCost },
+        };
       }
 
-      return { success: true, errorMessage: "", order:{products:stock,totalPrice} };
+      return {
+        success: true,
+        errorMessage: "",
+        order: { products: stock, totalPrice, totalCost },
+      };
     } else {
       return { success: false, errorMessage: "Invalid operation" };
     }
