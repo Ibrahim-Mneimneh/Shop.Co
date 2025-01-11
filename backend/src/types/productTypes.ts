@@ -29,20 +29,7 @@ export const variantSchema = Joi.object({
     .message("Invalid hex color"),
   quantity: Joi.array().items(quantitySchema).min(1).required(),
   images: Joi.array()
-    .items(
-      Joi.string()
-        .pattern(/^[0-9a-fA-F]{24}$/)
-        .message("Invalid Id format")
-        .required()
-        .custom((value, helpers) => {
-          if (!Types.ObjectId.isValid(value)) {
-            return helpers.message({
-              "any.invalid": "Image must be a valid ObjectId.",
-            });
-          }
-          return value;
-        })
-    )
+    .items(validIdSchema)
     .min(1)
     .required(),
   originalPrice: Joi.number().min(0).required(),
