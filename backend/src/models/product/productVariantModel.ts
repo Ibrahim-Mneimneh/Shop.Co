@@ -51,7 +51,12 @@ interface IProductVariantModel extends Model<IProductVariant> {
   ): Promise<{
     success: boolean;
     errorMessage: string;
-    order?: { totalPrice: number; totalCost:number; products: IProductRef[] };
+    order?: {
+      totalPrice: number;
+      totalCost: number;
+      products: IProductRef[];
+      reqproducts: IProductRef[]
+    };
   }>;
 }
 
@@ -195,7 +200,16 @@ productVariantSchema.statics.updateQuantity = async function (
   operation: "restock" | "purchase",
   stock: IProductRef[],
   session: ClientSession
-): Promise<{ success: boolean; errorMessage: string; order?: {totalPrice:number, totalCost :number,products:IProductRef[]}}> {
+): Promise<{
+  success: boolean;
+  errorMessage: string;
+  order?: {
+    totalPrice: number;
+    totalCost: number;
+    products: IProductRef[];
+    reqProducts:IProductRef[]
+  };
+}> {
   try {
     // Check for the type of operation
     if (operation === "restock") {
@@ -239,7 +253,8 @@ productVariantSchema.statics.updateQuantity = async function (
       return { success: true, errorMessage: "" };
     } else if (operation === "purchase") {
       // Save prices & allocate available products
-      const purchaseErrors: { variant: IObjectId; data: IOrderQuantity }[] = [];
+      let purchaseErrors:number =0
+      const orderProducts: IProductRef[] = [];
       // ensure that at least one item is purchased
       let purchaseFlag: boolean = false;
       let totalPrice: number = 0;
@@ -260,24 +275,14 @@ productVariantSchema.statics.updateQuantity = async function (
           if (!variantData) {
             elemQuantity.success = false;
             elemQuantity.message = `Out of Stock`;
-            purchaseErrors.push({ variant, data: elemQuantity });
+            purchaseErrors++
             continue; // move to next quantity
           }
           if (variantData.status !== "Active") {
             elemQuantity.success = false;
             elemQuantity.message = `Product not available`;
-            purchaseErrors.push({ variant, data: elemQuantity });
+            purchaseErrors++
             continue; // move to next quantity
-          }
-          // Add price attribute if not added
-          if (!productVariant.price) {
-            productVariant.price = variantData.isOnSale
-              ? variantData.saleOptions?.salePrice || variantData.originalPrice
-              : variantData.originalPrice;
-          }
-          // Add cost attribute if not added
-          if (!productVariant.cost) {
-            productVariant.cost = variantData.cost;
           }
 
           // get size details and check if the requested quantity is bigger than the
@@ -285,14 +290,30 @@ productVariantSchema.statics.updateQuantity = async function (
           if (sizeDetail && sizeDetail.quantityLeft < quantity) {
             elemQuantity.success = false;
             elemQuantity.message = `insufficient items left: ${sizeDetail.quantityLeft} left`;
-            purchaseErrors.push({ variant, data: elemQuantity });
+            purchaseErrors++
             continue; // move to next detail
           }
-          // Add success attribute, if update fails wont be returned
+          // Add success attributes, if update fails wont be returned
+          const price = (productVariant.price = variantData.isOnSale
+            ? variantData.saleOptions?.salePrice || variantData.originalPrice
+            : variantData.originalPrice);
+
+          const cost = variantData.cost;
           // Add price to totalPrice only successful
           elemQuantity.success = true;
           totalPrice += productVariant.price * quantity;
-          totalCost += variantData.cost * quantity;
+          totalCost += cost * quantity;
+          // Finalize to order products
+          if (orderProducts.length === 0) {
+            orderProducts.push({ variant,cost,price,quantity: [elemQuantity] });
+          } else {
+            let lastProductIndex = orderProducts.length - 1;
+            if (orderProducts[lastProductIndex].variant !== variant) {
+              orderProducts.push({ variant,cost,price, quantity: [] });
+              lastProductIndex++;
+            }
+            orderProducts[lastProductIndex].quantity.push(elemQuantity);
+          }
           elementOperations.push({
             updateOne: {
               filter: { _id: variant, "quantity.size": size },
@@ -318,25 +339,19 @@ productVariantSchema.statics.updateQuantity = async function (
         }
       }
       // if no elements match or if some do
-      if (purchaseErrors.length > 0 || !purchaseFlag) {
-        const errorMessage = purchaseErrors
-          .map(
-            (err) =>
-              `${err.variant} of size: (${err.data.size}): ${err.data.message}`
-          )
-          .join(". ");
-
+      if (purchaseErrors > 0 || !purchaseFlag) {
+        const errorMessage= purchaseFlag?"":" requested product purchase failed"
         return {
           success: purchaseFlag,
           errorMessage,
-          order: { products: stock, totalPrice, totalCost },
+          order: { products: orderProducts, totalPrice, totalCost,reqProducts:stock },
         };
       }
 
       return {
         success: true,
         errorMessage: "",
-        order: { products: stock, totalPrice, totalCost },
+        order: { products: orderProducts, totalPrice, totalCost, reqProducts:stock },
       };
     } else {
       return { success: false, errorMessage: "Invalid operation" };
