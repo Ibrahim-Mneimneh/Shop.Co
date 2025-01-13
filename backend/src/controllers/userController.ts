@@ -1,6 +1,7 @@
 import { Request, Response, RequestHandler } from "express";
 import Joi from "joi";
 import bcrypt from "bcryptjs";
+import clc from "cli-color";
 
 import { UserModel } from "../models/userModel";
 import { emailVerification } from "./verificationController";
@@ -210,14 +211,12 @@ export const getUser = async (req: AuthRequest, res: Response) => {
 };
 
 // Make an order
-export const orderProduct = async (req: AuthRequest, res: Response) => {
-  const session1 = await mongoose.startSession();
-  session1.startTransaction();
+export const orderProduct = async (req: DbSessionRequest, res: Response) => {
   try {
-    const paymentTimeout: number = 5 * 60 * 1000; // 5 mins
+    const paymentTimeout: number = 15 * 60 * 1000; // 5 mins
     const cartId = req.cartId;
     const userId = req.userId;
-
+    const session = req.dbSession as ClientSession;
     // get the cart & verify its not empty
     const cartData = await CartModel.findById(cartId);
     if (!cartData) {
@@ -234,7 +233,7 @@ export const orderProduct = async (req: AuthRequest, res: Response) => {
       await ProductVariantModel.updateQuantity(
         "purchase",
         cartObj.products,
-        session1
+        session
       );
     if (!success || !order) {
       res.status(400).json({
@@ -250,7 +249,9 @@ export const orderProduct = async (req: AuthRequest, res: Response) => {
       products,
       totalPrice,
       totalCost,
+      reservedUntil: new Date(Date.now() + 15 * 60 * 1000)
     });
+
     if (!orderData) {
       res.status(400).json({
         message: `Order failed: ${errorMessage}`,
@@ -258,14 +259,34 @@ export const orderProduct = async (req: AuthRequest, res: Response) => {
       });
       return;
     }
+
+    // In the cron make sure to restock items before activating the delete index
+    // Empty the cart if successful & add unitsSold
+    // Make a route for now to change the status of payment for testing **
+    // add cron to handle timeout in case of down time (paymentStatus/date)
+    
+    res
+      .status(200)
+      .json({ message: "Order has been successfully placed", data: order });
+
     const orderId = orderData._id;
+    console.log("Timeout here")
     setTimeout(async () => {
-      // add new session
+      console.log(clc.green("Order timeout processing..."));
+      // Add new session
       const session2 = await mongoose.startSession();
       session2.startTransaction();
-      try{
-        const orderData = await OrderModel.findById(orderId);
-        if (orderData && orderData.paymentStatus === "Pending") {
+      let transactionFlag = false;
+      try {
+        const orderData = await OrderModel.findByIdAndUpdate(
+          orderId,
+          { paymentStatus: "Failed" },
+          { session: session2 }
+        );
+        if (!orderData) {
+          throw new Error("Failed to find order -- Timeout failed");
+        }
+        if (orderData.paymentStatus === "Pending") {
           const orderProducts = orderData.products;
           // Add restockOperations
           const restockOps = [];
@@ -286,30 +307,29 @@ export const orderProduct = async (req: AuthRequest, res: Response) => {
                 },
               });
               const updateDetails = await ProductVariantModel.bulkWrite(
-                restockOps
+                restockOps,
+                { session: session2 }
               );
               if (updateDetails.modifiedCount !== restockOps.length) {
+                throw new Error("Stock partially updated -- Update reverted");
               }
+              transactionFlag = true;
             }
           }
-        }else{ // if the payment is "Successful"
-          
-        } 
-      }catch(error){
-
+          await session2.commitTransaction();
+          session2.endSession();
+        }
+      } catch (error: any) {
+        if (!transactionFlag) {
+          console.log(
+            clc.redBright("Order timeout processing failed..." + error.message)
+          );
+          await session2.abortTransaction();
+          session2.endSession();
+        }
       }
-      
     }, paymentTimeout);
 
-    // Add timeout function if you want it can be in the updateVariant
-    // In the cron make sure to restock items before activating the delete index
-    // Empty the cart if successful
-    // Make a route for now to change the status of payment for testing **
-
-    res
-      .status(200)
-      .json({ message: "Order has been successfully placed", data: order });
-    // add cron to handle timeout in case of down time (paymentStatus/date)
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
