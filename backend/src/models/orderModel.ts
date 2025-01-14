@@ -5,12 +5,13 @@ import { IObjectId, IProductRef } from "../types/modalTypes";
 export interface IOrder extends Document {
   _id: Types.ObjectId;
   user: IObjectId;
-  products: IProductRef;
+  products: IProductRef[];
   totalPrice: number;
-  totalCost:number;
-  paymentStatus: "Pending" | "Complete";
-  deliveryStatus: "Pending"|"In-delivery"|"Delivered"
-  expiresAt?:Date
+  totalCost: number;
+  paymentStatus: "Pending" | "Complete" | "Failed";
+  deliveryStatus: "Pending" | "In-delivery" | "Delivered";
+  expiresAt?: Date;
+  reservedUntil?:Date;
 }
 
 const orderSchema = new Schema<IOrder>(
@@ -41,9 +42,10 @@ const orderSchema = new Schema<IOrder>(
     paymentStatus: {
       type: String,
       default: "Pending",
-      enum: ["Pending", "Complete"],
+      enum: ["Pending", "Complete","Failed"],
     },
     expiresAt: { type: Date },
+    reservedUntil:{type:Date,required:true}
   },
   { timestamps: true }
 );
