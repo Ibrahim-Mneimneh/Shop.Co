@@ -10,7 +10,8 @@ export interface IOrder extends Document {
   totalCost:number;
   paymentStatus: "Pending" | "Complete";
   deliveryStatus: "Pending"|"In-delivery"|"Delivered"
-  expiresAt?:Date
+  expiresAt?:Date,
+  reservedUntil:Date
 }
 
 const orderSchema = new Schema<IOrder>(
