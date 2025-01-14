@@ -10,7 +10,6 @@ export interface IOrder extends Document {
   totalCost:number;
   paymentStatus: "Pending" | "Complete" | "Failed";
   deliveryStatus: "Pending"|"In-delivery"|"Delivered"
-  expiresAt?:Date
   reservedUntil:Date
 }
 
@@ -44,7 +43,6 @@ const orderSchema = new Schema<IOrder>(
       default: "Pending",
       enum: ["Pending", "Complete","Failed"],
     },
-    expiresAt: { type: Date },
     reservedUntil:{type:Date,required:true}
   },
   { timestamps: true }

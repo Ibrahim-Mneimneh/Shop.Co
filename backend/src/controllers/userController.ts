@@ -213,7 +213,7 @@ export const getUser = async (req: AuthRequest, res: Response) => {
 // Make an order
 export const orderProduct = async (req: DbSessionRequest, res: Response) => {
   try {
-    const paymentTimeout: number = 15 * 60 * 1000; // 5 mins
+    const paymentTimeout: number = 8 * 60 * 1000; // 5 mins
     const cartId = req.cartId;
     const userId = req.userId;
     const session = req.dbSession as ClientSession;
@@ -249,7 +249,7 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
       products,
       totalPrice,
       totalCost,
-      reservedUntil: new Date(Date.now() + 15 * 60 * 1000)
+      reservedUntil: new Date(Date.now() + paymentTimeout)
     });
 
     if (!orderData) {
@@ -270,9 +270,8 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
       .json({ message: "Order has been successfully placed", data: order });
 
     const orderId = orderData._id;
-    console.log("Timeout here")
     setTimeout(async () => {
-      console.log(clc.green("Order timeout processing..."));
+      // console.log(clc.green("Order timeout processing..."));
       // Add new session
       const session2 = await mongoose.startSession();
       session2.startTransaction();
@@ -306,24 +305,28 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
                   arrayFilters: [{ "elem.size": size }],
                 },
               });
-              const updateDetails = await ProductVariantModel.bulkWrite(
+              const updateVariantDetails = await ProductVariantModel.bulkWrite(
                 restockOps,
                 { session: session2 }
               );
-              if (updateDetails.modifiedCount !== restockOps.length) {
+              if (updateVariantDetails.modifiedCount !== restockOps.length) {
                 throw new Error("Stock partially updated -- Update reverted");
+              }
+              const deletedOrder = await OrderModel.findByIdAndDelete(orderId,{session:session2})
+              if(!deletedOrder){
+                throw new Error("Failed to delete order -- Update reverted");
               }
               transactionFlag = true;
             }
           }
-          await session2.commitTransaction();
-          session2.endSession();
         }
+        await session2.commitTransaction();
+        session2.endSession();
       } catch (error: any) {
         if (!transactionFlag) {
-          console.log(
+          /*console.log(
             clc.redBright("Order timeout processing failed..." + error.message)
-          );
+          );*/
           await session2.abortTransaction();
           session2.endSession();
         }
