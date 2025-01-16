@@ -274,6 +274,41 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+// Payment request (for testing purpose for now, later use stripe)
+export const confirmPayment = async (req:DbSessionRequest,res:Response)=>{
+  try{
+    const userId= req.userId
+    const session = req.dbSession
+    const cartId= req.cartId
+    const { error, value } = confirmPaymentSchema.validate(req.body);
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
+      return;
+    }
+    const {orderId}= value
+    // Change the paymentStatus to "Complete"
+    const updatedOrder = await OrderModel.findOneAndUpdate({_id:orderId,user:userId},{paymentStatus:"Complete"},{session})
+    if(!updatedOrder){
+      res.status(404).json({ message: "Order not found" });
+      return;
+    }
+    // Add orderId to user 
+    const updatedUser = await UserModel.findByIdAndUpdate(userId,{$push:{orders:orderId}},{session,new:true})
+    // Empty the cart 
+    const updatedCart = await CartModel.findOneAndUpdate(cartId,{$set:{products:[]}},{session,new:true})
+
+    res.status(200).json({message:"Order payment succeeded",data:{user:updatedUser}})
+    
+  }catch(error){
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
 // Get orders
 
 // Get order
