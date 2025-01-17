@@ -1,7 +1,9 @@
 import express, { Router } from "express";
 import {
+  confirmPayment,
   getUser,
   loginUser,
+  orderProduct,
   registerUser,
 } from "../controllers/userController";
 import { authMiddleware } from "../middleware/authMiddleware";
@@ -34,7 +36,9 @@ router.patch("/cart/products/:variantId", updateProductCartQuantity);
 // delete product (size or fully) from the cart
 router.delete("/cart/products/:variantId", deleteCartProduct);
 // Make an order
-router.post("/cart/order");
+router.post("/cart/order",orderProduct);
+// Confirm Payment (for testing now)
+router.post("/order/payment",confirmPayment)
 // View users' orders
 router.get("/orders");
 // View users' order
