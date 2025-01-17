@@ -278,9 +278,9 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
 // Payment request (for testing purpose for now, later use stripe)
 export const confirmPayment = async (req:DbSessionRequest,res:Response)=>{
   try{
-    const userId= req.userId
+    const userId= req.userId as IObjectId
     const session = req.dbSession
-    const cartId= req.cartId
+    const cartId= req.cartId as IObjectId
     const { error, value } = confirmPaymentSchema.validate(req.body);
     if (error) {
       res.status(400).json({
@@ -289,19 +289,40 @@ export const confirmPayment = async (req:DbSessionRequest,res:Response)=>{
       });
       return;
     }
-    const {orderId}= value
+    const orderId= value.orderId
     // Change the paymentStatus to "Complete"
-    const updatedOrder = await OrderModel.findOneAndUpdate({_id:orderId,user:userId},{paymentStatus:"Complete"},{session})
+    const orderData = await OrderModel.findById(orderId)
+    if(!orderData){
+      res.status(404).json({ message: "Order not found" });
+      return;
+    }
+    if(orderData.paymentStatus!=="Pending" || orderData.user.toString()!==userId.toString()){
+      const message = orderData.paymentStatus !== "Pending"?"Order payment already confirmed":"Order not found"
+      res.status(404).json({ message});
+      return;
+    }
+    const updatedOrder = await OrderModel.findByIdAndUpdate(orderId,{paymentStatus:"Complete"},{session,new:true})
     if(!updatedOrder){
       res.status(404).json({ message: "Order not found" });
       return;
     }
     // Add orderId to user 
-    const updatedUser = await UserModel.findByIdAndUpdate(userId,{$push:{orders:orderId}},{session,new:true})
+    const updatedUser = await UserModel.findByIdAndUpdate(userId,{$addToSet:{orders:orderId}},{session,new:true})
     // Empty the cart 
-    const updatedCart = await CartModel.findOneAndUpdate(cartId,{$set:{products:[]}},{session,new:true})
-
-    res.status(200).json({message:"Order payment succeeded",data:{user:updatedUser}})
+    const updatedCart = await CartModel.findByIdAndUpdate(cartId,{$set:{products:[]}},{session,new:true})
+    // Update unitsSold in the variant 
+    const unitsSoldOps = updatedOrder.products.map((product)=>{
+      return {
+      updateOne:{
+        filter:{_id:product.variant},
+        update:{$inc:{unitsSold:product.unitsSold}}
+      }
+    }})
+    const updateVariantDetails = await ProductVariantModel.bulkWrite(unitsSoldOps,{session})
+    if(updateVariantDetails.modifiedCount!==unitsSoldOps.length){
+      res.status(400).json({message:"Try again later! Failed to confirm payment"})
+    }
+    res.status(200).json({message:"Order payment succeeded"})
     
   }catch(error){
     console.log(error);
