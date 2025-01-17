@@ -20,4 +20,5 @@ export interface IProductRef {
   quantity: IOrderQuantity[];
   price?: number;
   cost?:number
+  unitsSold?:number
 }

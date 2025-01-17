@@ -261,6 +261,7 @@ productVariantSchema.statics.updateQuantity = async function (
       let totalCost: number = 0;
       // loop over products from cart
       for (let productVariant of stock) {
+        let unitsSold = 0
         const { variant, quantity } = productVariant;
         const elementOperations = [];
         // loop over variant sizes (for a user)
@@ -303,9 +304,10 @@ productVariantSchema.statics.updateQuantity = async function (
           elemQuantity.success = true;
           totalPrice += productVariant.price * quantity;
           totalCost += cost * quantity;
+          unitsSold+=quantity
           // Finalize to order products
           if (orderProducts.length === 0) {
-            orderProducts.push({ variant,cost,price,quantity: [elemQuantity] });
+            orderProducts.push({ variant,cost,price,quantity: [elemQuantity],unitsSold });
           } else {
             let lastProductIndex = orderProducts.length - 1;
             if (orderProducts[lastProductIndex].variant !== variant) {
