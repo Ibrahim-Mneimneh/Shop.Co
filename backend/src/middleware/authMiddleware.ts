@@ -4,6 +4,7 @@ import { UserModel } from "../models/userModel";
 
 import { IAdminJwtPayload, IJwtPayload, isAdminPayload, IUserJwtPayload } from "../types/jwtPayloadTypes";
 import { IObjectId } from "../types/modalTypes";
+import mongoose, { Types } from "mongoose";
 
 
 
@@ -41,8 +42,14 @@ try{
             res.status(401).json({message:"UnAuthorized Access - User token expired"})
             return
         }
+        if (!Types.ObjectId.isValid(userId)) {
+            res
+              .status(401)
+              .json({ message: "UnAuthorized Access - Invalid Token" });
+            return;
+        }
         req.role=role as string
-        req.userId=userId as IObjectId
+        req.userId= new mongoose.Types.ObjectId(userId) as IObjectId
     }else{
         const {userId,passwordChangedAt,cartId}:IUserJwtPayload=decoded as IUserJwtPayload
         const user = await UserModel.findById(userId);
@@ -70,8 +77,17 @@ try{
             res.status(401).json({message:"UnAuthorized Access"})
             return
         }
-        req.cartId=cartId as IObjectId
-        req.userId=userId as IObjectId
+        if (
+          !Types.ObjectId.isValid(userId) ||
+          !Types.ObjectId.isValid(cartId)
+        ) {
+          res
+            .status(401)
+            .json({ message: "UnAuthorized Access - Invalid Token" });
+          return;
+        }
+        req.cartId = new mongoose.Types.ObjectId(cartId) as IObjectId;
+        req.userId = new mongoose.Types.ObjectId(userId) as IObjectId;
     }
     
     next();
