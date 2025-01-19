@@ -23,16 +23,57 @@ const orderSchema = new Schema<IOrder>(
           ref: "Product",
           required: true,
         },
-        quantity: [{
-            quantity:{type:Number,required:true,min:[1,"Quantity must be at least 1"]},
-            size:{type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]},
-        }],
-        price: { type: Number, required: true },
-        cost: { type: Number, required: true },
+        quantity: [
+          {
+            quantity: {
+              type: Number,
+              required: true,
+              min: [1, "Quantity must be at least 1"],
+            },
+            size: {
+              type: String,
+              required: true,
+              enum: [
+                "XXS",
+                "XS",
+                "S",
+                "M",
+                "L",
+                "XL",
+                "XXL",
+                "XXXL",
+                "One-Size",
+              ],
+            },
+          },
+        ],
+        price: {
+          type: Number,
+          required: true,
+          min: [0, "Price cannot be negative"],
+        },
+        cost: {
+          type: Number,
+          min: [0, "Cost cannot be negative"],
+          required: true,
+        },
+        units: {
+          type: Number,
+          min: [1, "Quantity must be at least 1"],
+          required: true,
+        },
       },
     ],
-    totalPrice: { type: Number, required: true },
-    totalCost: { type: Number, required: true },
+    totalPrice: {
+      type: Number,
+      required: true,
+      min: [0, "totalPrice cannot be negative"],
+    },
+    totalCost: {
+      type: Number,
+      required: true,
+      min: [0, "totalCost cannot be negative"],
+    },
     deliveryStatus: {
       type: String,
       default: "Pending",
@@ -41,9 +82,9 @@ const orderSchema = new Schema<IOrder>(
     paymentStatus: {
       type: String,
       default: "Pending",
-      enum: ["Pending", "Complete","Failed"],
+      enum: ["Pending", "Complete", "Failed"],
     },
-    reservedUntil:{type:Date,required:true}
+    reservedUntil: { type: Date, required: true },
   },
   { timestamps: true }
 );
@@ -55,6 +96,5 @@ orderSchema.set("toJSON",{transform:(doc,ret)=>{
     return ret
 }});
 
-orderSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const OrderModel =mongoose.model<IOrder>("Order",orderSchema);
