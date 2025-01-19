@@ -19,6 +19,9 @@ export interface IProductRef {
   variant: IObjectId;
   quantity: IOrderQuantity[];
   price?: number;
-  cost?:number
-  unitsSold?:number
+  cost?: number;
+  units?: number;
+  name?: string;
+  category?: "Men" | "Women" | "Kids";
+  image?:string
 }
