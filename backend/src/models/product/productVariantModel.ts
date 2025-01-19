@@ -8,6 +8,7 @@ import mongoose, {
 import { IObjectId, IOrderQuantity, IProductRef, IToJSONOptions } from "../../types/modalTypes";
 import { ProductImageModel } from "../product/productImageModel";
 import { console } from "inspector";
+import { IProduct } from "./productModel";
 
 export interface IQuantity {
   size: string;
@@ -26,13 +27,13 @@ export interface IProductVariant extends Document {
   quantity: IQuantity[];
   images: Types.ObjectId[];
   originalPrice: number;
-  cost:number;
+  cost: number;
   isOnSale: boolean;
   saleOptions?: ISaleOptions;
   status: "Active" | "Inactive";
   unitsSold: number;
   stockStatus: "In Stock" | "Out of Stock";
-  product: Types.ObjectId;
+  product: IProduct | Types.ObjectId;
 }
 interface IProductVariantModel extends Model<IProductVariant> {
   addVariant(
@@ -55,7 +56,7 @@ interface IProductVariantModel extends Model<IProductVariant> {
       totalPrice: number;
       totalCost: number;
       products: IProductRef[];
-      reqproducts: IProductRef[]
+      purchaseErrors: IProductRef[]
     };
   }>;
 }
@@ -207,7 +208,7 @@ productVariantSchema.statics.updateQuantity = async function (
     totalPrice: number;
     totalCost: number;
     products: IProductRef[];
-    reqProducts:IProductRef[]
+    purchaseErrors:IProductRef[]
   };
 }> {
   try {
@@ -253,7 +254,7 @@ productVariantSchema.statics.updateQuantity = async function (
       return { success: true, errorMessage: "" };
     } else if (operation === "purchase") {
       // Save prices & allocate available products
-      let purchaseErrors:number =0
+      let purchaseErrors =[]
       const orderProducts: IProductRef[] = [];
       // ensure that at least one item is purchased
       let purchaseFlag: boolean = false;
@@ -261,7 +262,7 @@ productVariantSchema.statics.updateQuantity = async function (
       let totalCost: number = 0;
       // loop over products from cart
       for (let productVariant of stock) {
-        let unitsSold = 0
+        let units = 0
         const { variant, quantity } = productVariant;
         const elementOperations = [];
         // loop over variant sizes (for a user)
@@ -271,18 +272,19 @@ productVariantSchema.statics.updateQuantity = async function (
           const variantData: IProductVariant | null = await this.findOne({
             _id: variant,
             "quantity.size": size,
-          });
+          }).populate({ path: "product", options: { limit: 1 }, select:"name category"});
           // size isnt available
+          const { name, category } = variantData?.product as IProduct;
           if (!variantData) {
             elemQuantity.success = false;
-            elemQuantity.message = `Out of Stock`;
-            purchaseErrors++
+            elemQuantity.message = `Size not available`;
+            purchaseErrors.push({variant, name,category,quantity:[elemQuantity]})
             continue; // move to next quantity
           }
           if (variantData.status !== "Active") {
             elemQuantity.success = false;
             elemQuantity.message = `Product not available`;
-            purchaseErrors++
+            purchaseErrors.push({ variant, name, category, quantity:[elemQuantity] });
             continue; // move to next quantity
           }
 
@@ -291,8 +293,8 @@ productVariantSchema.statics.updateQuantity = async function (
           if (sizeDetail && sizeDetail.quantityLeft < quantity) {
             elemQuantity.success = false;
             elemQuantity.message = `insufficient items left: ${sizeDetail.quantityLeft} left`;
-            purchaseErrors++
-            continue; // move to next detail
+            purchaseErrors.push({variant, name, category, quantity:[elemQuantity] });
+            continue; // move to next quantity
           }
           // Add success attributes, if update fails wont be returned
           const price = (productVariant.price = variantData.isOnSale
@@ -304,14 +306,14 @@ productVariantSchema.statics.updateQuantity = async function (
           elemQuantity.success = true;
           totalPrice += productVariant.price * quantity;
           totalCost += cost * quantity;
-          unitsSold+=quantity
+          units+=quantity
           // Finalize to order products
           if (orderProducts.length === 0) {
-            orderProducts.push({ variant,cost,price,quantity: [elemQuantity],unitsSold });
+            orderProducts.push({ variant,name,category,cost,price,quantity: [elemQuantity],units });
           } else {
             let lastProductIndex = orderProducts.length - 1;
             if (orderProducts[lastProductIndex].variant !== variant) {
-              orderProducts.push({ variant,cost,price, quantity: [] });
+              orderProducts.push({ variant,name, category,cost,price, quantity: [], units });
               lastProductIndex++;
             }
             orderProducts[lastProductIndex].quantity.push(elemQuantity);
@@ -341,19 +343,19 @@ productVariantSchema.statics.updateQuantity = async function (
         }
       }
       // if no elements match or if some do
-      if (purchaseErrors > 0 || !purchaseFlag) {
+      if (purchaseErrors.length > 0 || !purchaseFlag) {
         const errorMessage= purchaseFlag?"":" requested product purchase failed"
         return {
           success: purchaseFlag,
           errorMessage,
-          order: { products: orderProducts, totalPrice, totalCost,reqProducts:stock },
+          order: { products: orderProducts, totalPrice, totalCost,purchaseErrors },
         };
       }
 
       return {
         success: true,
         errorMessage: "",
-        order: { products: orderProducts, totalPrice, totalCost, reqProducts:stock },
+        order: { products: orderProducts, totalPrice, totalCost, purchaseErrors },
       };
     } else {
       return { success: false, errorMessage: "Invalid operation" };
