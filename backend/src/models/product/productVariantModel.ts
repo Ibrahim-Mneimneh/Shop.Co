@@ -5,7 +5,12 @@ import mongoose, {
   Schema,
   Types,
 } from "mongoose";
-import { IObjectId, IOrderQuantity, IProductRef, IToJSONOptions } from "../../types/modalTypes";
+import {
+  IObjectId,
+  IOrderQuantity,
+  IProductRef,
+  IToJSONOptions,
+} from "../../types/modalTypes";
 import { ProductImageModel } from "../product/productImageModel";
 import { console } from "inspector";
 import { IProduct } from "./productModel";
@@ -56,7 +61,7 @@ interface IProductVariantModel extends Model<IProductVariant> {
       totalPrice: number;
       totalCost: number;
       products: IProductRef[];
-      purchaseErrors: IProductRef[]
+      purchaseErrors: IProductRef[];
     };
   }>;
 }
@@ -129,7 +134,7 @@ productVariantSchema.set("toJSON", {
     }
     delete ret.unitsSold;
     delete ret.product;
-    if (!options.role || options.role !== "admin"){
+    if (!options.role || options.role !== "admin") {
       delete ret.cost;
     }
     return ret;
@@ -208,7 +213,7 @@ productVariantSchema.statics.updateQuantity = async function (
     totalPrice: number;
     totalCost: number;
     products: IProductRef[];
-    purchaseErrors:IProductRef[]
+    purchaseErrors: IProductRef[];
   };
 }> {
   try {
@@ -254,7 +259,7 @@ productVariantSchema.statics.updateQuantity = async function (
       return { success: true, errorMessage: "" };
     } else if (operation === "purchase") {
       // Save prices & allocate available products
-      let purchaseErrors =[]
+      let purchaseErrors = [];
       const orderProducts: IProductRef[] = [];
       // ensure that at least one item is purchased
       let purchaseFlag: boolean = false;
@@ -262,38 +267,51 @@ productVariantSchema.statics.updateQuantity = async function (
       let totalCost: number = 0;
       // loop over products from cart
       for (let productVariant of stock) {
-        let units = 0
+        let units = 0;
         const { variant, quantity } = productVariant;
         const elementOperations = [];
         // loop over variant sizes (for a user)
         for (let elemQuantity of quantity) {
           const { size, quantity } = elemQuantity;
           // Fetch the variant with each item
-          const variantData: IProductVariant | null = await this.findOne({
-            _id: variant,
-            "quantity.size": size,
-          }).populate({ path: "product", options: { limit: 1 }, select:"name category"});
+          const variantData: IProductVariant | null = await this.findById(
+            variant
+          ).populate({
+            path: "product",
+            options: { limit: 1 },
+            select: "name category",
+          });
           // size isnt available
           const { name, category } = variantData?.product as IProduct;
           if (!variantData) {
-            elemQuantity.success = false;
-            elemQuantity.message = `Size not available`;
-            purchaseErrors.push({variant, name,category,quantity:[elemQuantity]})
-            continue; // move to next quantity
+            return {success:false,errorMessage:`product ${variant} not found`}
           }
-          if (variantData.status !== "Active") {
+          const sizeDetail = variantData.quantity.find((q) => q.size === size);
+          // if size not available or product not Active
+          if (!sizeDetail || variantData.status !== "Active") {
             elemQuantity.success = false;
-            elemQuantity.message = `Product not available`;
-            purchaseErrors.push({ variant, name, category, quantity:[elemQuantity] });
+            elemQuantity.message = sizeDetail?`Product not available`:`Size not available`;
+            purchaseErrors.push({
+              variant,
+              name,
+              category,
+              quantity: [elemQuantity],
+              image: variantData.images[0]
+            });
             continue; // move to next quantity
           }
 
-          // get size details and check if the requested quantity is bigger than the
-          const sizeDetail = variantData.quantity.find((q) => q.size === size);
-          if (sizeDetail && sizeDetail.quantityLeft < quantity) {
+          // Check if the requested quantity exceeds quantityLeft
+          if (sizeDetail.quantityLeft < quantity) {
             elemQuantity.success = false;
-            elemQuantity.message = `insufficient items left: ${sizeDetail.quantityLeft} left`;
-            purchaseErrors.push({variant, name, category, quantity:[elemQuantity] });
+            elemQuantity.message = `Insufficient items left: ${sizeDetail.quantityLeft} left`;
+            purchaseErrors.push({
+              variant,
+              name,
+              category,
+              quantity: [elemQuantity],
+              image: variantData.images[0],
+            });
             continue; // move to next quantity
           }
           // Add success attributes, if update fails wont be returned
@@ -306,14 +324,32 @@ productVariantSchema.statics.updateQuantity = async function (
           elemQuantity.success = true;
           totalPrice += productVariant.price * quantity;
           totalCost += cost * quantity;
-          units+=quantity
+          units += quantity;
           // Finalize to order products
           if (orderProducts.length === 0) {
-            orderProducts.push({ variant,name,category,cost,price,quantity: [elemQuantity],units });
+            orderProducts.push({
+              variant,
+              name,
+              category,
+              cost,
+              price,
+              quantity: [elemQuantity],
+              units,
+              image: variantData.images[0],
+            });
           } else {
             let lastProductIndex = orderProducts.length - 1;
             if (orderProducts[lastProductIndex].variant !== variant) {
-              orderProducts.push({ variant,name, category,cost,price, quantity: [], units });
+              orderProducts.push({
+                variant,
+                name,
+                category,
+                cost,
+                price,
+                quantity: [],
+                units,
+                image: variantData.images[0],
+              });
               lastProductIndex++;
             }
             orderProducts[lastProductIndex].quantity.push(elemQuantity);
@@ -335,7 +371,7 @@ productVariantSchema.statics.updateQuantity = async function (
           if (variantResult.modifiedCount !== elementOperations.length) {
             return {
               success: false,
-              errorMessage: `An error occured with ${variant} purchase`,
+              errorMessage: `An error occured with product ${variant} purchase`,
             }; // All changes will be reversed if one purchase failed while updating
           }
           //update purchaseflag
@@ -344,18 +380,30 @@ productVariantSchema.statics.updateQuantity = async function (
       }
       // if no elements match or if some do
       if (purchaseErrors.length > 0 || !purchaseFlag) {
-        const errorMessage= purchaseFlag?"":" requested product purchase failed"
+        const errorMessage = purchaseFlag
+          ? ""
+          : " requested product purchase failed";
         return {
           success: purchaseFlag,
           errorMessage,
-          order: { products: orderProducts, totalPrice, totalCost,purchaseErrors },
+          order: {
+            products: orderProducts,
+            totalPrice,
+            totalCost,
+            purchaseErrors,
+          },
         };
       }
 
       return {
         success: true,
         errorMessage: "",
-        order: { products: orderProducts, totalPrice, totalCost, purchaseErrors },
+        order: {
+          products: orderProducts,
+          totalPrice,
+          totalCost,
+          purchaseErrors,
+        },
       };
     } else {
       return { success: false, errorMessage: "Invalid operation" };
