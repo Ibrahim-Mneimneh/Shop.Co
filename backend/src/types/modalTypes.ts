@@ -23,5 +23,5 @@ export interface IProductRef {
   units?: number;
   name?: string;
   category?: "Men" | "Women" | "Kids";
-  image?:string
+  image?:IObjectId
 }
