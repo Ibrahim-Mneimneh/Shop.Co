@@ -12,9 +12,9 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import { ClientSession, IObjectId, IProductRef } from "../types/modalTypes";
 import { DbSessionRequest } from "../middleware/sessionMiddleware";
 import { ProductVariantModel } from "../models/product/productVariantModel";
-import { OrderModel } from "../models/orderModel";
+import { IOrder, OrderModel } from "../models/orderModel";
 import mongoose from "mongoose";
-import { confirmPaymentSchema, loginSchema, registerSchema } from "../types/userControllerTypes";
+import { confirmPaymentSchema, getOrdersSchema, loginSchema, registerSchema } from "../types/userControllerTypes";
 
 export const registerUser: RequestHandler = async (
   req: Request,
@@ -178,15 +178,15 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
       });
       return;
     }
-    const { products, totalPrice, totalCost, reqproducts } = order;
+    const { products, totalPrice, totalCost, purchaseErrors } = order;
     // Add allocated elements to the cart
-    const orderData = await OrderModel.create({
+    const orderData = await OrderModel.create([{
       user: userId,
       products,
       totalPrice,
       totalCost,
       reservedUntil: new Date(Date.now() + paymentTimeout)
-    });
+    }],{session});
 
     if (!orderData) {
       res.status(400).json({
@@ -195,17 +195,23 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
       });
       return;
     }
-
-    // In the cron make sure to restock items before activating the delete index
-    // Empty the cart if successful & add unitsSold
-    // Make a route for now to change the status of payment for testing **
-    // add cron to handle timeout in case of down time (paymentStatus/date)
-    
+    // Combine the error & order (exclude cost, totalCost and units)
+    const filteredOrder = [...purchaseErrors]
+    products.forEach(product =>{
+      const quantityLength= product.quantity.length
+      // delete units and cost 
+      delete product.cost
+      delete product.units
+      for(let i=0;i<quantityLength;i++){
+        const elemQuantity = product.quantity[i];
+        filteredOrder.push({...product,quantity:[elemQuantity]})
+      }
+    })
     res
       .status(200)
-      .json({ message: "Order has been successfully placed", data: order });
+      .json({ message: "Order has been successfully placed", data: {products:filteredOrder,totalCost} });
 
-    const orderId = orderData._id;
+    const orderId = orderData[0]._id;
     setTimeout(async () => {
       // console.log(clc.green("Order timeout processing..."));
       // Add new session
@@ -213,15 +219,16 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
       session2.startTransaction();
       let transactionFlag = false;
       try {
-        const orderData = await OrderModel.findByIdAndUpdate(
-          orderId,
+        const orderData = await OrderModel.findOneAndUpdate(
+          {
+            _id: orderId,
+            paymentStatus: "Pending",
+          },
           { paymentStatus: "Failed" },
           { session: session2 }
         );
-        if (!orderData) {
-          throw new Error("Failed to find order -- Timeout failed");
-        }
-        if (orderData.paymentStatus === "Pending") {
+        // If payment already complete (orderData empty --> no operation)
+        if (orderData && orderData.paymentStatus === "Pending") {
           const orderProducts = orderData.products;
           // Add restockOperations
           const restockOps = [];
@@ -241,21 +248,25 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
                   arrayFilters: [{ "elem.size": size }],
                 },
               });
-              const updateVariantDetails = await ProductVariantModel.bulkWrite(
-                restockOps,
-                { session: session2 }
-              );
+              const updateVariantDetails =
+                await ProductVariantModel.bulkWrite(restockOps, {
+                  session: session2,
+                });
               if (updateVariantDetails.modifiedCount !== restockOps.length) {
                 throw new Error("Stock partially updated -- Update reverted");
               }
-              const deletedOrder = await OrderModel.findByIdAndDelete(orderId,{session:session2})
-              if(!deletedOrder){
+              const deletedOrder = await OrderModel.findByIdAndDelete(
+                orderId,
+                { session: session2 }
+              );
+              if (!deletedOrder) {
                 throw new Error("Failed to delete order -- Update reverted");
               }
               transactionFlag = true;
             }
           }
         }
+        
         await session2.commitTransaction();
         session2.endSession();
       } catch (error: any) {
@@ -315,7 +326,7 @@ export const confirmPayment = async (req:DbSessionRequest,res:Response)=>{
       return {
       updateOne:{
         filter:{_id:product.variant},
-        update:{$inc:{unitsSold:product.unitsSold}}
+        update:{$inc:{unitsSold:product.units}}
       }
     }})
     const updateVariantDetails = await ProductVariantModel.bulkWrite(unitsSoldOps,{session})
@@ -330,8 +341,57 @@ export const confirmPayment = async (req:DbSessionRequest,res:Response)=>{
   }
 }
 
-// Get orders
+// Get orders (with pagination)
+export const getOrders = async (req:AuthRequest,res:Response)=>{
+  try{
+    const userId= req.userId
+    const { error, value } = getOrdersSchema.validate(req.query);
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
+      return;
+    }
+    const userData = await UserModel.findById(userId,"orders")
+    if(!userData){
+      throw new Error("User data not available")
+    }
+    const { orders } = userData;
+    const { page, limit } = value;
+    const totalPages= (orders.length-1)/limit
+    if (orders.length===0) {
+      res.status(404).json({
+        message: "No orders found!",
+      });
+      return;
+    }
+    if(page>totalPages){
+      res.status(400).json({
+        message:
+          "Validation failed: requested page exceeds totalPages"
+      });
+      return;
+    }
+    const skip= (page-1)*limit
+    const selectedOrders = orders.slice(skip,skip+limit).reverse()
+    
+    // Fetch orders & include needed data (link them with the product and productVar)
+    const ordersData = await OrderModel.find({_id:{$in:selectedOrders}})
+    // loop over them 
+    
+    // select each attribute from the item you need and push it 
+    // get the productVar and populate it (get only product details)
+    // if you want in the order seperate the quantites if u want (na22e shi w 3temdo)
+    // send the data to the user 
 
+
+
+  }catch(error){
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+}
 // Get order
 
 // ? Contact Support
