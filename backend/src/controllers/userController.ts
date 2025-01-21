@@ -359,7 +359,7 @@ export const getOrders = async (req:AuthRequest,res:Response)=>{
     }
     const { orders } = userData;
     const { page, limit } = value;
-    const totalPages= (orders.length-1)/limit
+    const totalPages= Math.floor((orders.length-1)/limit)+1
     if (orders.length===0) {
       res.status(404).json({
         message: "No orders found!",
@@ -375,17 +375,10 @@ export const getOrders = async (req:AuthRequest,res:Response)=>{
     }
     const skip= (page-1)*limit
     const selectedOrders = orders.slice(skip,skip+limit).reverse()
-    
     // Fetch orders & include needed data (link them with the product and productVar)
-    const ordersData = await OrderModel.find({_id:{$in:selectedOrders}})
-    // loop over them 
-    
-    // select each attribute from the item you need and push it 
-    // get the productVar and populate it (get only product details)
-    // if you want in the order seperate the quantites if u want (na22e shi w 3temdo)
-    // send the data to the user 
+    const ordersData = await OrderModel.find({_id:{$in:selectedOrders}},"_id totalPrice deliveryStatus createdAt")
 
-
+    res.status(200).json({message:"Orders loaded successfully",data:{orders:ordersData,page,totalPages}}) 
 
   }catch(error){
     console.log(error);
