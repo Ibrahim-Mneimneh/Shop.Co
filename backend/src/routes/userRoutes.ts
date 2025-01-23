@@ -1,6 +1,8 @@
 import express, { Router } from "express";
 import {
   confirmPayment,
+  getOrder,
+  getOrders,
   getUser,
   loginUser,
   orderProduct,
@@ -38,11 +40,11 @@ router.delete("/cart/products/:variantId", deleteCartProduct);
 // Make an order
 router.post("/cart/order",orderProduct);
 // Confirm Payment (for testing now)
-router.post("/order/payment",confirmPayment)
+router.post("/orders/payment",confirmPayment)
 // View users' orders
-router.get("/orders");
+router.get("/orders",getOrders);
 // View users' order
-router.get("/orders/:orderId");
+router.get("/orders/:orderId",getOrder);
 
 export const userRouter: Router = router;
 
