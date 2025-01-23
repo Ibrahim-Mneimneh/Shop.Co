@@ -1,5 +1,4 @@
 import { Request, Response, RequestHandler } from "express";
-import Joi from "joi";
 import bcrypt from "bcryptjs";
 import clc from "cli-color";
 
@@ -9,12 +8,13 @@ import { CartModel, ICart } from "../models/cartModel";
 import { jwtGenerator } from "./authController";
 
 import { AuthRequest } from "../middleware/authMiddleware";
-import { ClientSession, IObjectId, IProductRef } from "../types/modalTypes";
+import { ClientSession, IObjectId } from "../types/modalTypes";
 import { DbSessionRequest } from "../middleware/sessionMiddleware";
 import { ProductVariantModel } from "../models/product/productVariantModel";
 import { IOrder, OrderModel } from "../models/orderModel";
 import mongoose from "mongoose";
-import { confirmPaymentSchema, getOrdersSchema, loginSchema, registerSchema } from "../types/userControllerTypes";
+import { getOrdersSchema, loginSchema, orderIdSchema, registerSchema } from "../types/userControllerTypes";
+import { validIdSchema } from "../types/productTypes";
 
 export const registerUser: RequestHandler = async (
   req: Request,
@@ -292,7 +292,7 @@ export const confirmPayment = async (req:DbSessionRequest,res:Response)=>{
     const userId= req.userId as IObjectId
     const session = req.dbSession
     const cartId= req.cartId as IObjectId
-    const { error, value } = confirmPaymentSchema.validate(req.body);
+    const { error, value } = orderIdSchema.validate(req.body);
     if (error) {
       res.status(400).json({
         message:
@@ -386,7 +386,30 @@ export const getOrders = async (req:AuthRequest,res:Response)=>{
   }
 }
 // Get order
-
+export const getOrder = async (req:AuthRequest,res:Response)=>{
+  try{
+    const {userId}= req 
+    const { error, value } = orderIdSchema.validate(req.params);
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
+      return;
+    }
+    const {orderId} = value
+    // Check if the user has such an Id (include in the find)
+    const orderData = await OrderModel.findOne({_id:orderId,user:userId},{"updatedAt":0,"totalCost":0,"products.cost":0,"products.units":0,"reservedUntil":0})
+    if(!orderData){
+      res.status(404).json({message:"Order not found"})
+      return
+    }
+    res.status(200).json({message:"Order loaded successfully",data:orderData})    
+  }catch(error){
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+}
 // ? Contact Support
 
 // ? Send complain or return request
