@@ -1,19 +1,20 @@
 import { Request, RequestHandler, Response, } from "express";
 import bcrypt from "bcryptjs"
 
-import { loginSchema } from "./userController";
 import { UserModel } from "../models/userModel";
 import { jwtGenerator } from "./authController";
 import { ClientSession, IObjectId, IOrderQuantity, IProductRef } from "../types/modalTypes";
 import { AuthRequest } from "../middleware/authMiddleware";
-import { IBase64Image, IIsValidBase64, isValidBase64 } from "../types/adminControllerTypes";
+import { IBase64Image, IIsValidBase64, isMoreThanWeekOld, isValidBase64 } from "../types/adminControllerTypes";
 import { ProductImageModel } from "../models/product/productImageModel";
 import { IProduct, ProductModel } from "../models/product/productModel";
-import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, updateQuantitySchema, updateVariantSaleSchema, validIdSchema } from "../types/productTypes";
+import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, updateDeliveryStatusSchema, updateQuantitySchema, updateVariantSaleSchema, validIdSchema } from "../types/productTypes";
 import { IProductVariant, IQuantity, ProductVariantModel } from "../models/product/productVariantModel";
 import { DbSessionRequest } from "../middleware/sessionMiddleware";
 import { EndSaleModel, StartSaleModel } from "../models/product/productSale";
 import { productIdSchema } from "../types/publicControllerTypes";
+import { loginSchema, orderIdSchema } from "../types/userControllerTypes";
+import { OrderModel } from "../models/orderModel";
 
 
 // Admin login
@@ -122,10 +123,11 @@ export const addProduct:RequestHandler = async (req:AuthRequest,res:Response)=>{
 // ***************************** UPDATE FOR LATER (works on products that exist too)
 export const addProductVariant:RequestHandler = async (req:DbSessionRequest,res:Response)=>{
     try{
-        // get product details
-        const data:{variants:IProductVariant[],productId:string} =  {variants:req.body.variants,productId:req.params.productId}
         // validate productDetails
-        const { error, value } = addProductVariantSchema.validate(data);
+        const { error, value } = addProductVariantSchema.validate({
+          variants: req.body.variants,
+          productId: req.params.productId,
+        });
         if(error){
             res.status(400).json({ message: "Validation failed: "+ error.details[0].message.replace(/\"/g, '') });
             return
@@ -474,7 +476,42 @@ export const getProduct = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+export const updateDeliveryStatus = async (req:AuthRequest,res:Response)=>{
+    try{
+    const { error, value } = updateDeliveryStatusSchema.validate({
+      orderId: req.params.orderId,
+      deliveryStatus:req.body.deliveryStatus
+    });
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
+      return;
+    }
+    const {orderId,deliveryStatus}=value
+    const orderData = await OrderModel.findOne({_id:orderId,paymentStatus:"Complete"},"deliveryStatus updatedAt")
+    if(!orderData){
+        res.status(404).json({message:"Order not found"})
+        return
+    }
+    const currentDeliveryStatus = orderData.deliveryStatus
+    const {updatedAt} = orderData
+    // To allow fixing status in case something goes wrong but with limits
+    if(currentDeliveryStatus==="Delivered" && isMoreThanWeekOld(updatedAt)){
+        res.status(400).json({ message: "Order already delivered" });
+        return;
+    }
+    // update status
+    orderData.deliveryStatus=deliveryStatus
+    await orderData.save()
 
+    res.status(200).json({message:"Delivery status successfully updated"});
+    }catch(error){
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+    }
+}
 // View sales ** need original Price
 
 // View orders 
