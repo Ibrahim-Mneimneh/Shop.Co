@@ -7,10 +7,10 @@ export interface IOrder extends Document {
   user: IObjectId;
   products: IProductRef[];
   totalPrice: number;
-  totalCost:number;
+  totalCost?: number;
   paymentStatus: "Pending" | "Complete" | "Failed";
-  deliveryStatus: "Pending"|"In-delivery"|"Delivered"
-  reservedUntil:Date
+  deliveryStatus: "Pending" | "In-delivery" | "Delivered";
+  reservedUntil: Date;
 }
 
 const orderSchema = new Schema<IOrder>(

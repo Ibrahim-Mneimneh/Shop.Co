@@ -1,6 +1,5 @@
 import mongoose, { Document, Types, Schema, Model } from "mongoose";
 import { ClientSession, IObjectId } from "../../types/modalTypes";
-import { IProductVariant, ProductVariantModel } from "./productVariantModel";
 
 export interface IProduct extends Document {
   _id: Types.ObjectId;

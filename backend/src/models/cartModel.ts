@@ -17,7 +17,6 @@ const cartSchema = new Schema<ICart>({
         quantity:[{
             quantity:{type:Number,required:true,min:[1,"Quantity must be at least 1"]},
             size:{type: String, required: true, enum: ["XXS","XS", "S", "M", "L", "XL", "XXL","XXXL","One-Size"]},
-        
         }]
     }],
 });
