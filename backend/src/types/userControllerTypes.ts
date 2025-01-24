@@ -66,11 +66,11 @@ export const loginSchema = Joi.object<ILogin>({
   }),
 });
 
-export const confirmPaymentSchema = Joi.object({
-    orderId:validIdSchema
+export const orderIdSchema = Joi.object({
+  orderId:validIdSchema
 });
 
 export const getOrdersSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(10).max(20).default(10),
+  limit: Joi.number().integer().min(2).max(30).default(10),
 });

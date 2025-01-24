@@ -128,3 +128,10 @@ export const updateVariantSaleSchema = Joi.object({
     }),
   productVarId: validIdSchema,
 }).options({ convert: true });
+
+export const updateDeliveryStatusSchema = Joi.object({
+  orderId: validIdSchema,
+  deliveryStatus: Joi.string()
+    .valid("Pending","In-delivery","Delivered")
+    .required(),
+});
