@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { addProduct, addProductImage, addProductVariant, adminLogin, deleteProduct, deleteProductVariant, deleteVariantSale, getProduct, restockProduct, updateVariantSale } from '../controllers/adminController';
+import { addProduct, addProductImage, addProductVariant, adminLogin, deleteProduct, deleteProductVariant, deleteVariantSale, getProduct, restockProduct, updateDeliveryStatus, updateVariantSale } from '../controllers/adminController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { sessionMiddleware } from '../middleware/sessionMiddleware';
 
@@ -29,6 +29,7 @@ router.delete("/products/variants/:variantId",deleteProductVariant)
 router.patch("/products/restock/:productId",sessionMiddleware,restockProduct) 
 // Add Variant for a Product
 router.post("/products/:productId/variants",sessionMiddleware,addProductVariant) 
-
+// Update Order Status
+router.patch("/orders/:orderId/status", updateDeliveryStatus);
 
 export const adminRoutes=router
