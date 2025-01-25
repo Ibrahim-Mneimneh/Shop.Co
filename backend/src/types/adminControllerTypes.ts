@@ -1,4 +1,5 @@
 import imageSize from "image-size";
+import { OrderModel } from "../models/orderModel";
 
 export interface IBase64Image {
   type: string;
@@ -98,3 +99,37 @@ export const isMoreThanWeekOld = (updatedAt: Date) => {
     (currentDate.getTime() - updatedAt.getTime()) / (24 * 60 * 60 * 1000);
   return differenceInDays >= 7;
 };
+
+// (Daily Order count) / (Total Sales & Profit with filters) / Most Sold items / Most Sold items weekly / An array for of objects for dailySales / 4 items that are out of stock (based on unitsSold order) / 4 Most recent orders
+
+export const OrderCount = async (frequency:"daily"|"weekly"|"monthly")=>{
+  const currentDate= new Date();
+  let startDate
+  switch(frequency){
+    case "daily":
+      startDate= new Date(currentDate.setHours(0,0,0,0))
+      break;
+    case "weekly":
+      const day = currentDate.getDay()
+      startDate= new Date()
+      startDate.setDate(currentDate.getDate()-day)
+      startDate.setHours(0,0,0,0)
+      break
+    case "monthly":
+      startDate=new Date(currentDate.getFullYear(), currentDate.getMonth(), 1); 
+      break
+    default:
+      throw new Error("Invalid frequency. Frequency should be of value ('daily','weekly','monthly')")
+  }
+  const orderCountAggregate = [
+    {
+      $match: {
+        createdAt: { $gte: startDate },
+      },
+    },
+    { $count: "totalCount" },
+  ];
+  const result = await OrderModel.aggregate(orderCountAggregate)
+  return result[0].totalCount
+
+} 
