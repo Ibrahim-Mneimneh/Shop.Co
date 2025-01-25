@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { addProduct, addProductImage, addProductVariant, adminLogin, deleteProduct, deleteProductVariant, deleteVariantSale, getProduct, restockProduct, updateDeliveryStatus, updateVariantSale } from '../controllers/adminController';
-import { authMiddleware } from '../middleware/authMiddleware';
+import { adminAuthMiddleware, authMiddleware } from '../middleware/authMiddleware';
 import { sessionMiddleware } from '../middleware/sessionMiddleware';
 
 const router: Router = express.Router();
@@ -9,7 +9,7 @@ const router: Router = express.Router();
 router.post("/login",adminLogin)
 
 // Auth Middleware for routes
-router.use("/",authMiddleware)
+router.use("/",adminAuthMiddleware)
 
 // Add Product 
 router.post("/products",addProduct)
