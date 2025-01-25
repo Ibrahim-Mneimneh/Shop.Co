@@ -100,27 +100,39 @@ export const isMoreThanWeekOld = (updatedAt: Date) => {
   return differenceInDays >= 7;
 };
 
-// (Daily Order count) / (Total Sales & Profit with filters) / Most Sold items / Most Sold items weekly / An array for of objects for dailySales / 4 items that are out of stock (based on unitsSold order) / 4 Most recent orders
+// (Total Sales & Profit with filters) / Most Sold items / Most Sold items weekly / An array for of objects for dailySales / 4 items that are out of stock (based on unitsSold order) / 4 Most recent orders
 
-export const OrderCount = async (frequency:"daily"|"weekly"|"monthly")=>{
-  const currentDate= new Date();
-  let startDate
-  switch(frequency){
+const startDateCalculator = (frequency: "daily" | "weekly" | "monthly") => {
+  let startDate;
+  const currentDate = new Date();
+  switch (frequency) {
     case "daily":
-      startDate= new Date(currentDate.setHours(0,0,0,0))
+      startDate = new Date(currentDate.setHours(0, 0, 0, 0));
       break;
     case "weekly":
-      const day = currentDate.getDay()
-      startDate= new Date()
-      startDate.setDate(currentDate.getDate()-day)
-      startDate.setHours(0,0,0,0)
-      break
+      const day = currentDate.getDay();
+      startDate = new Date();
+      startDate.setDate(currentDate.getDate() - day);
+      startDate.setHours(0, 0, 0, 0);
+      break;
     case "monthly":
-      startDate=new Date(currentDate.getFullYear(), currentDate.getMonth(), 1); 
-      break
+      startDate = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        1
+      );
+      break;
     default:
-      throw new Error("Invalid frequency. Frequency should be of value ('daily','weekly','monthly')")
+      throw new Error(
+        "Invalid frequency. Frequency should be of value ('daily','weekly','monthly')"
+      );
   }
+  return startDate
+};
+
+export const getOrderCount = async (frequency:"daily"|"weekly"|"monthly")=>{
+
+  const startDate = startDateCalculator(frequency)
   const orderCountAggregate = [
     {
       $match: {
@@ -129,7 +141,40 @@ export const OrderCount = async (frequency:"daily"|"weekly"|"monthly")=>{
     },
     { $count: "totalCount" },
   ];
-  const result = await OrderModel.aggregate(orderCountAggregate)
-  return result[0].totalCount
 
-} 
+  try{
+    const result = await OrderModel.aggregate(orderCountAggregate);
+    return result[0].totalCount;
+  }catch(error){
+    throw error
+  }
+}
+
+const getSalesAndProfit = async (frequency:"daily"|"weekly"|"monthly")=>{
+  const startDate = startDateCalculator(frequency);
+  const salesAndProfitAggregate = [
+    {
+      $match: {
+        createdAt: { $gte: startDate },
+      },
+    },
+    {
+      $addFields: {
+        profit: { $round: [{ $subtract: ["$totalPrice", "$totalCost"] }, 2] },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalProfit: { $sum: "$profit" },
+        Sales: { $sum: "$totalPrice" },
+      },
+    },
+  ];
+  try {
+    const result = await OrderModel.aggregate(salesAndProfitAggregate);
+    return {profit:result[0].profit,sales:result[0].sales};
+  } catch (error) {
+    throw error;
+  }
+}
