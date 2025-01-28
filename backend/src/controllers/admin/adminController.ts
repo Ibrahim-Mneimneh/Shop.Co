@@ -22,6 +22,7 @@ import {
   addProductSchema,
   addProductVariantSchema,
   deleteProductQuerySchema,
+  getDashboardSchema,
   updateDeliveryStatusSchema,
   updateQuantitySchema,
   updateVariantSaleSchema,
@@ -37,6 +38,7 @@ import { EndSaleModel, StartSaleModel } from "../../models/product/productSale";
 import { productIdSchema } from "../../types/publicControllerTypes";
 import { loginSchema, orderIdSchema } from "../../types/userControllerTypes";
 import { OrderModel } from "../../models/orderModel";
+import { getMostRecentOrders, getMostSold, getOrderCount, getPendingOrders, getSalesAndProfit, getSalesGraph } from "./feedController";
 
 // Admin login
 export const adminLogin: RequestHandler = async (
@@ -759,9 +761,28 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
 
 // Get Dashboad (Daily Order count) / (Total Sales & Profit with filters) / Most Sold items / An array for of objects for dailySales / 4 items that are out of stock (based on unitsSold order) / 4 Most recent orders
 
-const getDashboard = async (req: AuthRequest, res: Response) => {
+export const getDashboard = async (req: AuthRequest, res: Response) => {
   try {
-    // I need the settings of the user (add attributes for default)
+    const { error, value } = getDashboardSchema.validate(
+      req.query
+    );
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
+      return;
+    }
+    const {orderCountFrequency,mostSoldFrequency,salesGraphFrequency,salesFrequency}= value
+    // Call the functions and return the data 
+    const orderCount= await getOrderCount(orderCountFrequency)
+    const sales = await getSalesAndProfit(salesFrequency)
+    const mostSold = await getMostSold(mostSoldFrequency)
+    const recentOrders= await getMostRecentOrders()
+    const salesGraph= await getSalesGraph(salesGraphFrequency)
+    const pendingOrders= await getPendingOrders()
+
+    res.status(200).json({message:"Feed loaded successfully",data:{orderCount,sales,mostSold,recentOrders,salesGraph,pendingOrders}})
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
