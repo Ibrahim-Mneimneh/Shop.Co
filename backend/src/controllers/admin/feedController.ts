@@ -3,7 +3,7 @@ import { OrderModel } from "../../models/orderModel";
 
 /// Items that are low on stock (most unitsSold order) / delivery pending orders (by oldest)
 
-const startDateCalculator = (
+export const startDateCalculator = (
   frequency: "daily" | "weekly" | "monthly" | "yearly"
 ) => {
   let startDate;
@@ -57,7 +57,7 @@ export const getOrderCount = async (
   }
 };
 
-const getSalesAndProfit = async (
+export const getSalesAndProfit = async (
   frequency: "daily" | "weekly" | "monthly" | "yearly"
 ) => {
   const startDate = startDateCalculator(frequency);
@@ -75,20 +75,20 @@ const getSalesAndProfit = async (
     {
       $group: {
         _id: null,
-        totalProfit: { $sum: "$profit" },
-        Sales: { $sum: "$totalPrice" },
+        profit: { $sum: "$profit" },
+        sales: { $sum: "$totalPrice" },
       },
     },
   ];
   try {
     const result = await OrderModel.aggregate(salesAndProfitAggregate);
-    return { profit: result[0].profit, sales: result[0].sales };
+    return {sales:result[0].sales,profit:result[0].profit}
   } catch (error) {
     throw error;
   }
 };
 
-const getMostSold = async (frequency: "daily" | "weekly" | "monthly") => {
+export const getMostSold = async (frequency: "daily" | "weekly" | "monthly") => {
   const startDate = startDateCalculator(frequency);
   const mostSoldAggregate: PipelineStage[] = [
     {
@@ -123,7 +123,7 @@ const getMostSold = async (frequency: "daily" | "weekly" | "monthly") => {
   }
 };
 
-const getMostRecentOrders = async () => {
+export const getMostRecentOrders = async () => {
   const mostRecentOrdersAggregate: PipelineStage[] = [
     {
       $sort: {
@@ -142,7 +142,7 @@ const getMostRecentOrders = async () => {
   }
 };
 
-const getSalesGraph = async (frequency: "monthly" | "yearly") => {
+export const getSalesGraph = async (frequency: "monthly" | "yearly") => {
   // if monthly get daily, if yearly get monthly
   const startDate = startDateCalculator(frequency);
   const match = frequency === "monthly" ? "%Y-%m-%d" : "%Y-%m";
@@ -168,7 +168,7 @@ const getSalesGraph = async (frequency: "monthly" | "yearly") => {
     },
     {
       $project: {
-        profit: { $round: [{ $subtract: ["$totalPrice", "$totalCost"] }, 2] },
+        profit: { $round: [{ $subtract: ["$sales", "$cost"] }, 2] },
         sales: 1,
       },
     },
@@ -186,7 +186,7 @@ const getSalesGraph = async (frequency: "monthly" | "yearly") => {
   }
 };
 
-const getPendingOrders = async ()=>{
+export const getPendingOrders = async ()=>{
     try {
       const result = await OrderModel.aggregate([
         {
