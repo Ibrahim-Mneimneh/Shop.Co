@@ -23,6 +23,7 @@ import {
   addProductVariantSchema,
   deleteProductQuerySchema,
   getDashboardSchema,
+  getMostSoldProductsSchema,
   updateDeliveryStatusSchema,
   updateQuantitySchema,
   updateVariantSaleSchema,
@@ -789,6 +790,46 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getMostSoldProducts = async (req:AuthRequest,res:Response)=>{
+  // get the data from the user (or add it inside user schema) as default option ************
+  const { error, value } = getMostSoldProductsSchema.validate(req.body);
+  if (error) {
+    res.status(400).json({
+      message:
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+    });
+    return;
+  }
+  const { page=1, limit=10, mostSoldFrequency } = value;
+  const skip = (page - 1) * limit;
+  try{
+    const {result}= await getMostSold(mostSoldFrequency,true,skip,limit)
+    if (result && result.length === 0) {
+      res.status(404).json({ message: "No matching products found" });
+      return;
+    }
+    const totalCount = result[0].totalCount[0].count;
+    const totalPages: number =
+      totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
+    if (page > totalPages) {
+      res.status(400).json({
+        message:
+          "Selected page number exceeds available totalPages: " + totalPages,
+      });
+      return;
+    }
+    res.status(200).json({
+      message: "Matching products found",
+      data: {
+        totalPages,
+        currentPage: page,
+        products: result[0],
+      },
+    });
+  }catch(error){
+
+  }
+}
 // View orders
 
 // Get out of stock products
