@@ -82,13 +82,18 @@ export const getSalesAndProfit = async (
   ];
   try {
     const result = await OrderModel.aggregate(salesAndProfitAggregate);
-    return {sales:result[0].sales,profit:result[0].profit}
+    return { sales: result[0].sales, profit: result[0].profit };
   } catch (error) {
     throw error;
   }
 };
 
-export const getMostSold = async (frequency: "daily" | "weekly" | "monthly") => {
+export const getMostSold = async (
+  frequency: "daily" | "weekly" | "monthly",
+  pagination: boolean = false,
+  skip: number = 0,
+  limit: number = 10
+) => {
   const startDate = startDateCalculator(frequency);
   const mostSoldAggregate: PipelineStage[] = [
     {
@@ -113,8 +118,17 @@ export const getMostSold = async (frequency: "daily" | "weekly" | "monthly") => 
         unitsSold: -1,
       },
     },
-    { $limit: 10 },
   ];
+  mostSoldAggregate.push(
+    pagination
+      ? {
+          $facet: {
+            totalCount: [{ $count: "count" }],
+            result: [{ $skip: skip }, { $limit: limit }],
+          },
+        }
+      : { $limit: limit }
+  );
   try {
     const result = await OrderModel.aggregate(mostSoldAggregate);
     return { result };
@@ -123,17 +137,26 @@ export const getMostSold = async (frequency: "daily" | "weekly" | "monthly") => 
   }
 };
 
-export const getMostRecentOrders = async () => {
+export const getMostRecentOrders = async (pagination:boolean=false,skip:number=0,limit:number=10) => {
   const mostRecentOrdersAggregate: PipelineStage[] = [
     {
       $sort: {
         createdAt: -1,
       },
     },
-    {
-      $limit: 10,
-    },
   ];
+  mostRecentOrdersAggregate.push(
+    pagination
+      ? {
+          $facet: {
+            totalCount: [{ $count: "count" }],
+            result: [{ $skip: skip }, { $limit: limit }],
+          },
+        }
+      : {
+          $limit: limit,
+        }
+  );
   try {
     const result = await OrderModel.aggregate(mostRecentOrdersAggregate);
     return { result };
@@ -186,44 +209,62 @@ export const getSalesGraph = async (frequency: "monthly" | "yearly") => {
   }
 };
 
-export const getPendingOrders = async ()=>{
-    try {
-      const result = await OrderModel.aggregate([
-        {
-          $match: {
-            paymentStatus: "Complete",
-            deliveryStatus: "Pending",
-          },
-        },
-        {
-          $sort: {
-            createdAt: 1,
-          },
-        },
-        {
-          $project: {
-            totalPrice: 1,
-            deliveryStatus: 1,
-            _id: 1,
-            createdAt: 1,
-            products: {
-              $map: {
-                input: "$products",
-                as: "product",
-                in: {
-                  _id: "$$product._id",
-                  variant: "$$product.variant",
-                  name: "$$product.name",
-                  quantity: "$$product.quantity",
-                  price: "$$product.price",
-                },
-              },
+export const getPendingOrders = async (
+  pagination: boolean = false,
+  skip: number = 0,
+  limit: number = 10
+) => {
+  const pendingOrderAggregate: PipelineStage[] = [
+    {
+      $match: {
+        paymentStatus: "Complete",
+        deliveryStatus: "Pending",
+      },
+    },
+    {
+      $sort: {
+        createdAt: 1,
+      },
+    },
+    {
+      $project: {
+        totalPrice: 1,
+        deliveryStatus: 1,
+        _id: 1,
+        createdAt: 1,
+        products: {
+          $map: {
+            input: "$products",
+            as: "product",
+            in: {
+              _id: "$$product._id",
+              variant: "$$product.variant",
+              name: "$$product.name",
+              quantity: "$$product.quantity",
+              price: "$$product.price",
             },
           },
         },
-      ]);
-      return { result };
-    } catch (error) {
-      throw error;
-    }
-}
+      },
+    },
+  ];
+  pendingOrderAggregate.push(
+    pagination
+      ? {
+          $facet: {
+            totalCount: [{ $count: "count" }],
+            result: [{ $skip: skip }, { $limit: limit }],
+          },
+        }
+      : {
+          $limit: limit,
+        }
+  );
+  try {
+    const result = await OrderModel.aggregate();
+
+    return { result };
+  } catch (error) {
+    throw error;
+  }
+};
