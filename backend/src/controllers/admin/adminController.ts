@@ -6,7 +6,6 @@ import { jwtGenerator } from "../authController";
 import {
   ClientSession,
   IObjectId,
-  IOrderQuantity,
   IProductRef,
 } from "../../types/modalTypes";
 import { AuthRequest } from "../../middleware/authMiddleware";
@@ -22,8 +21,6 @@ import {
   addProductSchema,
   addProductVariantSchema,
   deleteProductQuerySchema,
-  getDashboardSchema,
-  getMostSoldProductsSchema,
   updateDeliveryStatusSchema,
   updateQuantitySchema,
   updateVariantSaleSchema,
@@ -37,9 +34,9 @@ import {
 import { DbSessionRequest } from "../../middleware/sessionMiddleware";
 import { EndSaleModel, StartSaleModel } from "../../models/product/productSale";
 import { productIdSchema } from "../../types/publicControllerTypes";
-import { loginSchema, orderIdSchema } from "../../types/userControllerTypes";
+import { loginSchema } from "../../types/userControllerTypes";
 import { OrderModel } from "../../models/orderModel";
-import { getMostRecentOrders, getMostSold, getOrderCount, getPendingOrders, getSalesAndProfit, getSalesGraph } from "./feedController";
+
 
 // Admin login
 export const adminLogin: RequestHandler = async (
@@ -49,12 +46,10 @@ export const adminLogin: RequestHandler = async (
   try {
     const { error, value } = loginSchema.validate(req.body);
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
 
@@ -163,12 +158,10 @@ export const addProduct: RequestHandler = async (
     // validate productDetails
     const { error, value } = addProductSchema.validate(productDetails);
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const { name, description, category, subCategory } = value;
@@ -203,12 +196,10 @@ export const addProductVariant: RequestHandler = async (
       productId: req.params.productId,
     });
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const {
@@ -283,12 +274,10 @@ export const updateVariantSale = async (
 
     const { error, value } = updateVariantSaleSchema.validate(data);
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const session = req.dbSession as ClientSession;
@@ -311,12 +300,10 @@ export const updateVariantSale = async (
       if (startDate && startDate !== currentSale.startDate) {
         if (!endDate && currentSale.endDate <= startDate) {
           // ensure endDate>start
-          res
-            .status(400)
-            .json({
-              message:
-                "Validation failed: startDate should be earlier than endDate",
-            });
+          res.status(400).json({
+            message:
+              "Validation failed: startDate should be earlier than endDate",
+          });
           return;
         }
         // startSale update; remove prodvarId from old startSale to new one
@@ -349,12 +336,10 @@ export const updateVariantSale = async (
         if (endDate && endDate !== currentSale.endDate) {
           if (!startDate && currentSale.startDate >= endDate) {
             // Ensure new end > start (old)
-            res
-              .status(400)
-              .json({
-                message:
-                  "Validation failed: startDate should be earlier than endDate",
-              });
+            res.status(400).json({
+              message:
+                "Validation failed: startDate should be earlier than endDate",
+            });
             return;
           }
           // update endSale
@@ -399,12 +384,10 @@ export const updateVariantSale = async (
     } else {
       // Not on sale , Add sale strictly require all 3 attributes
       if (!startDate || !endDate || !discountPercentage) {
-        res
-          .status(400)
-          .json({
-            message:
-              "Validation failed: 'startDate', 'endDate' & 'discountPercentage' are required",
-          });
+        res.status(400).json({
+          message:
+            "Validation failed: 'startDate', 'endDate' & 'discountPercentage' are required",
+        });
         return;
       }
       // fetch for start and endDates if not found create one
@@ -451,12 +434,10 @@ export const deleteVariantSale = async (
     const session = req.dbSession;
     const { error, value } = validIdSchema.validate(req.params.variantId);
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const variantId = value;
@@ -535,12 +516,10 @@ export const restockProduct = async (req: DbSessionRequest, res: Response) => {
       details: req.body,
     });
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const { productId }: { productId: IObjectId } = value;
@@ -571,11 +550,9 @@ export const restockProduct = async (req: DbSessionRequest, res: Response) => {
       req.dbSession as ClientSession
     );
     if (!success) {
-      res
-        .status(400)
-        .json({
-          message: `Failed to restock '${product.name}' of id: ${errorMessage}`,
-        });
+      res.status(400).json({
+        message: `Failed to restock '${product.name}' of id: ${errorMessage}`,
+      });
       return;
     }
     res.status(200).json({ message: "Product successfully restocked" });
@@ -593,12 +570,10 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
       clearStock: req.query.clearStock,
     });
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     // Get validated query parameters
@@ -651,12 +626,10 @@ export const deleteProductVariant = async (
       clearStock: req.query.clearStock,
     });
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const { clearStock = "false", Id: variantId } = value;
@@ -760,76 +733,6 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
 };
 // View sales ** need original Price
 
-// Get Dashboad (Daily Order count) / (Total Sales & Profit with filters) / Most Sold items / An array for of objects for dailySales / 4 items that are out of stock (based on unitsSold order) / 4 Most recent orders
-
-export const getDashboard = async (req: AuthRequest, res: Response) => {
-  try {
-    const { error, value } = getDashboardSchema.validate(
-      req.query
-    );
-    if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
-    }
-    const {orderCountFrequency,mostSoldFrequency,salesGraphFrequency,salesFrequency}= value
-    // Call the functions and return the data 
-    const orderCount= await getOrderCount(orderCountFrequency)
-    const sales = await getSalesAndProfit(salesFrequency)
-    const mostSold = await getMostSold(mostSoldFrequency)
-    const recentOrders= await getMostRecentOrders()
-    const salesGraph= await getSalesGraph(salesGraphFrequency)
-    const pendingOrders= await getPendingOrders()
-
-    res.status(200).json({message:"Feed loaded successfully",data:{orderCount,sales,mostSold,recentOrders,salesGraph,pendingOrders}})
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
-  }
-};
-
-export const getMostSoldProducts = async (req:AuthRequest,res:Response)=>{
-  // get the data from the user (or add it inside user schema) as default option ************
-  const { error, value } = getMostSoldProductsSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({
-      message:
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-    });
-    return;
-  }
-  const { page=1, limit=10, mostSoldFrequency } = value;
-  const skip = (page - 1) * limit;
-  try{
-    const {result}= await getMostSold(mostSoldFrequency,true,skip,limit)
-    if (result && result.length === 0) {
-      res.status(404).json({ message: "No matching products found" });
-      return;
-    }
-    const totalCount = result[0].totalCount[0].count;
-    const totalPages: number =
-      totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
-    if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
-    }
-    res.status(200).json({
-      message: "Matching products found",
-      data: {
-        totalPages,
-        currentPage: page,
-        products: result[0],
-      },
-    });
-  }catch(error){
-
-  }
-}
 // View orders
 
 // Get out of stock products
