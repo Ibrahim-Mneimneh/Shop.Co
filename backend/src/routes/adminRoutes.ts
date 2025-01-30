@@ -8,6 +8,7 @@ import {
   deleteProductVariant,
   deleteVariantSale,
   getDashboard,
+  getMostSoldProducts,
   getProduct,
   restockProduct,
   updateDeliveryStatus,
@@ -32,6 +33,8 @@ router.get("/dashboard",getDashboard);
 router.post("/products", addProduct);
 // Add Product Images
 router.post("/products/images", addProductImage);
+// Get most Sold Products 
+router.get("/products/mostSold",getMostSoldProducts)
 // Get Product & its variants
 router.get("/products/:productId", getProduct); // *********** Modify for later
 // Add varinat Sale or update it
