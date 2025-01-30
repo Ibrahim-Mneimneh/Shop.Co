@@ -7,7 +7,6 @@ import {
   deleteProduct,
   deleteProductVariant,
   deleteVariantSale,
-  getDashboard,
   getProduct,
   restockProduct,
   updateDeliveryStatus,
@@ -18,6 +17,7 @@ import {
   authMiddleware,
 } from "../middleware/authMiddleware";
 import { sessionMiddleware } from "../middleware/sessionMiddleware";
+import { getDashboard, getMostSoldProducts, getPendingOrders, getRecentOrders } from "../controllers/admin/dashboard/dashboard";
 
 const router: Router = express.Router();
 
@@ -32,6 +32,12 @@ router.get("/dashboard",getDashboard);
 router.post("/products", addProduct);
 // Add Product Images
 router.post("/products/images", addProductImage);
+// Get most Sold Products 
+router.get("/products/mostSold",getMostSoldProducts)
+// Get delivery pending Products 
+router.get("/orders/pending",getPendingOrders)
+// Get most Sold Products 
+router.get("/orders/recent",getRecentOrders)
 // Get Product & its variants
 router.get("/products/:productId", getProduct); // *********** Modify for later
 // Add varinat Sale or update it
