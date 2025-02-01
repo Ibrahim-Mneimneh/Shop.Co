@@ -1,5 +1,6 @@
 import { PipelineStage } from "mongoose";
 import { OrderModel } from "../../../models/orderModel";
+import { ProductVariantModel } from "../../../models/product/productVariantModel";
 
 export const startDateCalculator = (
   frequency: "daily" | "weekly" | "monthly" | "yearly"
@@ -20,11 +21,11 @@ export const startDateCalculator = (
       startDate = new Date(
         currentDate.getFullYear(),
         currentDate.getMonth(),
-        1
+        0
       );
       break;
     case "yearly":
-      startDate = new Date(currentDate.getFullYear(), 1, 1);
+      startDate = new Date(currentDate.getFullYear(), 0, 0);
       break;
     default:
       throw new Error(
@@ -42,6 +43,7 @@ export const getOrderCount = async (
     {
       $match: {
         createdAt: { $gte: startDate },
+        paymentStatus:"Complete"
       },
     },
     { $count: "totalCount" },
@@ -49,7 +51,9 @@ export const getOrderCount = async (
 
   try {
     const result = await OrderModel.aggregate(orderCountAggregate);
-    return result[0].totalCount;
+    return result.length === 0
+      ? 0
+      : result[0].totalCount;
   } catch (error) {
     throw error;
   }
@@ -80,7 +84,9 @@ export const getSalesAndProfit = async (
   ];
   try {
     const result = await OrderModel.aggregate(salesAndProfitAggregate);
-    return { sales: result[0].sales, profit: result[0].profit };
+    return result.length === 0
+      ? { sales: 0, profit: 0 }
+      : { sales: result[0].sales, profit: result[0].profit };
   } catch (error) {
     throw error;
   }
@@ -129,7 +135,8 @@ export const getMostSold = async (
   );
   try {
     const result = await OrderModel.aggregate(mostSoldAggregate);
-    return result[0];
+    if (pagination) return result.length===0?[]:result[0];
+    return result.length===0?[]:result;
   } catch (error) {
     throw error;
   }
@@ -186,7 +193,8 @@ export const getMostRecentOrders = async (
   );
   try {
     const result = await OrderModel.aggregate(mostRecentOrdersAggregate);
-    return  result[0] ;
+    if (pagination) return result.length === 0 ? [] : result[0];
+    return result.length === 0 ? [] : result;
   } catch (error) {
     throw error;
   }
@@ -230,7 +238,7 @@ export const getSalesGraph = async (frequency: "monthly" | "yearly") => {
   ];
   try {
     const result = await OrderModel.aggregate(salesGraphAggregate);
-    return { result };
+    return result;
   } catch (error) {
     throw error;
   }
@@ -268,7 +276,7 @@ export const getPendingOrdersAgg = async (
     },
     {
       $project: {
-        _id:1,
+        _id: 1,
         totalPrice: 1,
         totalCost: 1,
         deliveryStatus: 1,
@@ -293,8 +301,10 @@ export const getPendingOrdersAgg = async (
   );
   try {
     const result = await OrderModel.aggregate(pendingOrderAggregate);
-    return result[0];
+    if (pagination) return result.length === 0 ? [] : result[0];
+    return result.length === 0 ? [] : result;
   } catch (error) {
     throw error;
   }
 };
+
