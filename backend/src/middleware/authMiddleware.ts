@@ -141,6 +141,16 @@ export const adminAuthMiddleware = async (
     req.userId = new mongoose.Types.ObjectId(userId) as IObjectId;
     next();
   }catch(error){
+    if (error instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({ message: "Unauthorized Access - Invalid token" });
+      return;
+    }
+
+    if (error instanceof jwt.TokenExpiredError) {
+      res.status(401).json({ message: "Unauthorized Access - Token expired" });
+      return;
+    }
+    console.log(error)
     res.status(500).json({ message: "Server Error" });
   }
 };
