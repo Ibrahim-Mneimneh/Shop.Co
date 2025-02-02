@@ -5,12 +5,7 @@ import mongoose, {
   Schema,
   Types,
 } from "mongoose";
-import {
-  IObjectId,
-  IOrderQuantity,
-  IProductRef,
-  IToJSONOptions,
-} from "../../types/modalTypes";
+import { IObjectId, IProductRef, IToJSONOptions } from "../../types/modalTypes";
 import { ProductImageModel } from "../product/productImageModel";
 import { console } from "inspector";
 import { IProduct } from "./productModel";
@@ -39,6 +34,7 @@ export interface IProductVariant extends Document {
   unitsSold: number;
   stockStatus: "In Stock" | "Out of Stock";
   product: IProduct | Types.ObjectId;
+  totalQuantity: number;
 }
 interface IProductVariantModel extends Model<IProductVariant> {
   addVariant(
@@ -83,6 +79,11 @@ const productVariantSchema = new Schema<IProductVariant>(
         },
       },
     ],
+    totalQuantity: {
+      type: Number,
+      required: true,
+      min: [0, "Quantity cannot be negative"],
+    },
     images: [{ type: Schema.Types.ObjectId, ref: "ProductImage" }],
     color: { type: String, required: true },
     originalPrice: {
@@ -158,11 +159,15 @@ productVariantSchema.statics.addVariant = async function (
     const variantImageError = (
       await Promise.all(
         imageIds.map(async (imageId, index) => {
-          const imageData = await ProductImageModel.findById(imageId);
+          const imageData = await ProductImageModel.findById(
+            imageId,
+            "isLinked"
+          );
           if (!imageData) {
             return `Image at index: ${index} not found`;
           }
-          if (imageData && !imageData.isLinked) {
+          const { isLinked } = imageData;
+          if (!isLinked) {
             imageIdsToLink.push(imageId);
           }
           return null;
@@ -233,6 +238,7 @@ productVariantSchema.statics.updateQuantity = async function (
                   filter: { _id: element.variant },
                   update: {
                     $push: { quantity: { quantityLeft: quantity, size } },
+                    $inc: { totalQuantity: quantity },
                   },
                   upsert: false,
                 },
@@ -241,7 +247,12 @@ productVariantSchema.statics.updateQuantity = async function (
             return {
               updateOne: {
                 filter: { _id: element.variant, "quantity.size": size },
-                update: { $inc: { "quantity.$.quantityLeft": quantity } },
+                update: {
+                  $inc: {
+                    "quantity.$.quantityLeft": quantity,
+                    totalQuantity: quantity,
+                  },
+                },
                 upsert: false,
               },
             };
@@ -284,19 +295,24 @@ productVariantSchema.statics.updateQuantity = async function (
           // size isnt available
           const { name, category } = variantData?.product as IProduct;
           if (!variantData) {
-            return {success:false,errorMessage:`product ${variant} not found`}
+            return {
+              success: false,
+              errorMessage: `product ${variant} not found`,
+            };
           }
           const sizeDetail = variantData.quantity.find((q) => q.size === size);
           // if size not available or product not Active
           if (!sizeDetail || variantData.status !== "Active") {
             elemQuantity.success = false;
-            elemQuantity.message = sizeDetail?`Product not available`:`Size not available`;
+            elemQuantity.message = sizeDetail
+              ? `Product not available`
+              : `Size not available`;
             purchaseErrors.push({
               variant,
               name,
               category,
               quantity: [elemQuantity],
-              image: variantData.images[0]
+              image: variantData.images[0],
             });
             continue; // move to next quantity
           }
@@ -357,7 +373,12 @@ productVariantSchema.statics.updateQuantity = async function (
           elementOperations.push({
             updateOne: {
               filter: { _id: variant, "quantity.size": size },
-              update: { $inc: { "quantity.$.quantityLeft": -quantity } },
+              update: {
+                $inc: {
+                  "quantity.$.quantityLeft": -quantity,
+                  totalQuantity: -quantity,
+                },
+              },
               upsert: false,
             },
           });
