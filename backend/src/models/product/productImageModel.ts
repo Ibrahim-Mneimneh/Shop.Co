@@ -20,9 +20,9 @@ const ProductImageSchema = new Schema<IProductImage>({
     image:{type:String, required:true,},
     type:{type:String,enum:["jpeg","png","jpg"]},
     isLinked:{type:Boolean, default:false},
-    expiresAt:{type:Date,default: new Date(Date.now() + 5 * 60 * 1000) ,validate:{validator: function(value:Date){
+    expiresAt:{type:Date,default: new Date(Date.now() + 15 * 60 * 1000) ,validate:{validator: function(value:Date){
         return !(this.isLinked && value)
-    },message: "Cannot set expiration date for linked images",}}
+    },message: "Cannot set expiration date for linked images"}}
 })
 
 ProductImageSchema.set("toJSON",{transform:(doc,ret)=>{
@@ -51,7 +51,7 @@ ProductImageSchema.statics.linkImages= async function(imageIds:IObjectId[],sessi
         }
 
         // Handle partial success
-        if (result.modifiedCount < imageIds.length) {
+        if (result.matchedCount < imageIds.length) {
             const failedCount = imageIds.length - result.modifiedCount;
             return {success:false, errorMessage:`Try again: Failed to link ${failedCount} images`};
         }
