@@ -332,7 +332,7 @@ productVariantSchema.statics.updateQuantity = async function (
           }
           // Add success attributes, if update fails wont be returned
           const price = (productVariant.price = variantData.isOnSale
-            ? variantData.saleOptions?.salePrice || variantData.originalPrice
+            ? variantData.saleOptions?.salePrice ?? variantData.originalPrice
             : variantData.originalPrice);
 
           const cost = variantData.cost;
