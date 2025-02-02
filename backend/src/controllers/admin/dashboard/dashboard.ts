@@ -1,7 +1,4 @@
 import {  Response } from "express";
-
-// Get Dashboad (Daily Order count) / (Total Sales & Profit with filters) / Most Sold items / An array for of objects for dailySales / 4 items that are out of stock (based on unitsSold order) / 4 Most recent orders
-
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import { getDashboardSchema, getMostSoldProductsSchema, getRecentSchema } from "../../../types/productTypes";
 import {
@@ -13,6 +10,8 @@ import {
   getSalesGraph,
 } from "./aggregates";
 
+// Get Dashboad 
+// (Daily Order count) / (Total Sales & Profit with filters) / Most Sold products / daily or monthly Sales Graph / Products that are out of stock (based on unitsSold order)/ Most recent orders / Delivery pending orders
 export const getDashboard = async (req: AuthRequest, res: Response) => {
   try {
     const { error, value } = getDashboardSchema.validate(req.query);
@@ -36,7 +35,6 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
     const recentOrders = await getMostRecentOrders();
     const salesGraph = await getSalesGraph(salesGraphFrequency);
     const pendingOrders = await getPendingOrdersAgg();
-
     res.status(200).json({
       message: "Feed loaded successfully",
       data: {
