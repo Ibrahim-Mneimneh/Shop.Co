@@ -22,7 +22,7 @@ export const getCart: RequestHandler  =async (req:AuthRequest,res:Response)=>{
             return 
         }
         if(cartData.products.length===0){
-            res.status(200).json({message:"Cart is empty",cartData:{}})
+            res.status(200).json({message:"Cart is empty",data:{products:[],totalPrice:0}})
             return
         }
 
@@ -49,7 +49,7 @@ export const getCart: RequestHandler  =async (req:AuthRequest,res:Response)=>{
         })
         totalPrice = parseFloat(totalPrice.toFixed(2));
 
-        res.status(200).json({message:"Successful",data:{cartData,totalPrice}})
+        res.status(200).json({message:"Successful",data:{products:cartData.products,totalPrice}})
         
     }catch(error){
         console.log(error)
