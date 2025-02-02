@@ -11,6 +11,8 @@ export interface IOrder extends Document {
   paymentStatus: "Pending" | "Complete" | "Failed";
   deliveryStatus: "Pending" | "In-delivery" | "Delivered";
   reservedUntil: Date;
+  updatedAt: Date;
+  createdAt: Date;
 }
 
 const orderSchema = new Schema<IOrder>(
