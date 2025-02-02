@@ -89,7 +89,7 @@ export const filterProductsSchema = Joi.object({
       .custom((value, helpers) => {
         if (typeof value !== "number") {
           return helpers.error("any.invalid", {
-            message: "rating must be a valid number",
+            message: "page must be a valid number",
           });
         }
         return value;

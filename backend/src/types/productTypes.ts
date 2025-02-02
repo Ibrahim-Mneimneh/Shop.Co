@@ -3,7 +3,7 @@ import Joi, { ErrorReport } from "joi";
 import { IProduct } from "../models/product/productModel";
 import { IQuantity } from "../models/product/productVariantModel";
 import mongoose, { Types } from "mongoose";
-import { IObjectId } from "./modalTypes";
+import { IObjectId, IOrderQuantity } from "./modalTypes";
 
 export const validIdSchema = Joi.string()
   .pattern(/^[0-9a-fA-F]{24}$/)
@@ -27,13 +27,20 @@ export const variantSchema = Joi.object({
   color: Joi.string()
     .pattern(/^#([0-9a-fA-F]{3}){1,2}$/)
     .message("Invalid hex color"),
-  quantity: Joi.array().items(quantitySchema).min(1).required(),
-  images: Joi.array()
-    .items(validIdSchema)
+  quantity: Joi.array()
+    .items(quantitySchema)
     .min(1)
     .required(),
+  images: Joi.array().items(validIdSchema).min(1).required(),
   originalPrice: Joi.number().min(0).required(),
-});
+  cost: Joi.number().min(0).required(),
+}).custom((value, helpers) => {
+  const totalQuantity = value.quantity.reduce(
+    (sum: number, item: { quantityLeft: number }) => sum + item.quantityLeft,
+    0
+  );
+  return { ...value, totalQuantity };
+});;
 
 export const addProductSchema = Joi.object<IProduct>({
   name: Joi.string().required().messages({
@@ -132,7 +139,7 @@ export const updateVariantSaleSchema = Joi.object({
 export const updateDeliveryStatusSchema = Joi.object({
   orderId: validIdSchema,
   deliveryStatus: Joi.string()
-    .valid("Pending","In-delivery","Delivered")
+    .valid("Pending", "In-delivery", "Delivered")
     .required(),
 });
 
@@ -150,11 +157,9 @@ export const getDashboardSchema = Joi.object({
 });
 
 export const getMostSoldProductsSchema = Joi.object({
-  frequency: Joi.string()
-    .valid("daily", "weekly", "monthly")
-    .required(),
-  page:Joi.number().integer().greater(0).required(),
-  limit: Joi.number().valid(5,10).required()
+  frequency: Joi.string().valid("daily", "weekly", "monthly").required(),
+  page: Joi.number().integer().greater(0).required(),
+  limit: Joi.number().valid(5, 10).required(),
 });
 
 export const getRecentSchema = Joi.object({
