@@ -1,4 +1,5 @@
 import mongoose,{Types} from "mongoose"
+import { IQuantity } from "../models/product/productVariantModel"
 
 export type IObjectId=Types.ObjectId
 export type IDecimal=Types.Decimal128
@@ -24,4 +25,11 @@ export interface IProductRef {
   name?: string;
   category?: "Men" | "Women" | "Kids";
   image?:IObjectId
+}
+
+export interface IDeleteProduct {
+  status: string;
+  quantity?: IQuantity[];
+  stockStatus?: string;
+  totalQuantity?: number;
 }

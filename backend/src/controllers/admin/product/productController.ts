@@ -4,7 +4,7 @@ import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, up
 import { ProductModel } from "../../../models/product/productModel";
 import { DbSessionRequest } from "../../../middleware/sessionMiddleware";
 import { IProductVariant, IQuantity, ProductVariantModel } from "../../../models/product/productVariantModel";
-import { IObjectId, IProductRef } from "../../../types/modalTypes";
+import { IDeleteProduct, IObjectId, IProductRef } from "../../../types/modalTypes";
 import { ClientSession } from "mongoose";
 
 // Add a product
@@ -198,14 +198,11 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
       res.status(404).json({ message: "Product not found" });
       return;
     }
-    const updateObj: {
-      status: string;
-      quantity?: IQuantity[];
-      stockStatus?: string;
-    } = { status: "Inactive" };
+    const updateObj: IDeleteProduct = { status: "Inactive" };
     if (clearStock === "true") {
       updateObj.quantity = [];
       updateObj.stockStatus = "Out of Stock";
+      updateObj.totalQuantity=0
     }
     //update its variants' status and reset their quantity
     const updatedVariants = await ProductVariantModel.updateMany(
@@ -242,19 +239,16 @@ export const deleteProductVariant = async (
       return;
     }
     const { clearStock = "false", Id: variantId } = value;
-    const updateObject: {
-      status: string;
-      quantity?: IQuantity[];
-      stockStatus?: string;
-    } = { status: "Inactive" };
+    const updateObj: IDeleteProduct = { status: "Inactive" };
     if (clearStock === "true") {
-      updateObject.quantity = [];
-      updateObject.stockStatus = "Out of Stock";
+      updateObj.quantity = [];
+      updateObj.stockStatus = "Out of Stock";
+      updateObj.totalQuantity = 0;
     }
     // check if it exists and set its status to Inactive and update its product
     const productVarUpdate = await ProductVariantModel.findOneAndUpdate(
       { _id: variantId, status: "Active" },
-      { $set: updateObject }
+      { $set: updateObj }
     );
     if (!productVarUpdate) {
       res.status(400).json({ message: "Failed to delete product" });
@@ -266,7 +260,3 @@ export const deleteProductVariant = async (
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-// fix delete and update for stock to consider totalQuantity 
-
-// Add variant addition to existing product (with variants)
