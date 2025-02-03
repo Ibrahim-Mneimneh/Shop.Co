@@ -207,11 +207,11 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
         filteredOrder.push({...product,quantity:[elemQuantity]})
       }
     })
+    const orderId = orderData[0]._id;
     res
       .status(200)
-      .json({ message: "Order has been successfully placed", data: {products:filteredOrder,totalCost} });
+      .json({ message: "Order has been successfully placed", data: {_id: orderId,products:filteredOrder,totalPrice} });
 
-    const orderId = orderData[0]._id;
     setTimeout(async () => {
       // console.log(clc.green("Order timeout processing..."));
       // Add new session
