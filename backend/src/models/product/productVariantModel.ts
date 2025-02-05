@@ -32,7 +32,7 @@ export interface IProductVariant extends Document {
   saleOptions?: ISaleOptions;
   status: "Active" | "Inactive";
   unitsSold: number;
-  stockStatus: "In Stock" | "Out of Stock";
+  stockStatus: "In Stock" | "Low Stock" | "Out of Stock";
   product: IProduct | Types.ObjectId;
   totalQuantity: number;
 }
@@ -112,7 +112,7 @@ const productVariantSchema = new Schema<IProductVariant>(
     status: { type: String, enum: ["Active", "Inactive"], default: "Active" },
     stockStatus: {
       type: String,
-      enum: ["In Stock", "Out of Stock"],
+      enum: ["In Stock", "Low Stock", "Out of Stock"],
       default: "In Stock",
     },
     unitsSold: { type: Number, min: 0, default: 0 },
@@ -399,6 +399,9 @@ productVariantSchema.statics.updateQuantity = async function (
           purchaseFlag = true;
         }
       }
+      // format totalPrice & totalCost
+      totalPrice = parseFloat(totalPrice.toFixed(2));
+      totalCost = parseFloat(totalCost.toFixed(2));
       // if no elements match or if some do
       if (purchaseErrors.length > 0 || !purchaseFlag) {
         const errorMessage = purchaseFlag
