@@ -308,3 +308,64 @@ export const getPendingOrdersAgg = async (
   }
 };
 
+export const getLowOnStockAgg = async (
+  quantity:number=10,
+  pagination: boolean = false,
+  skip: number = 0,
+  limit: number = 10
+) => {
+  const lowStockAggregate: PipelineStage[] = [
+    {
+      $match: {
+        totalQuantity: { $lte: quantity },
+        status: "Active",
+      },
+    },
+    {
+      $lookup: {
+        from: "products",
+        localField: "product",
+        foreignField: "_id",
+        as: "product",
+      },
+    },
+    {
+      $unwind: {
+        path: "$product",
+      },
+    },
+    {
+      $project: {
+        createdAt: 1,
+        status: 1,
+        originalPrice: 1,
+        unitsSold: 1,
+        totalQuantity: 1,
+        saleOptions: 1,
+        _id: 1,
+        name: "$product.name",
+        rating: "$product.rating",
+      },
+    },
+  ];
+
+  lowStockAggregate.push(
+    pagination
+      ? {
+          $facet: {
+            totalCount: [{ $count: "count" }],
+            result: [{ $skip: skip }, { $limit: limit }],
+          },
+        }
+      : {
+          $limit: limit,
+        }
+  );
+  try {
+    const result = await ProductVariantModel.aggregate(lowStockAggregate);
+    if (pagination) return result.length === 0 ? [] : result[0];
+    return result.length === 0 ? [] : result;
+  } catch (error) {
+    throw error;
+  }
+};
