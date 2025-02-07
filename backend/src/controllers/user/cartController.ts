@@ -1,17 +1,17 @@
 import { Response, RequestHandler } from "express";
 
-import { AuthRequest } from "../middleware/authMiddleware";
-import { CartModel, ICart } from "../models/cartModel";
+import { AuthRequest } from "../../middleware/authMiddleware";
+import { CartModel, ICart } from "../../models/cartModel";
 import {
   addToCartSchema,
   deleteCartProductSchema,
   updateCartQuantitySchema,
-} from "../types/cartControllerTypes";
+} from "../../types/cartControllerTypes";
 import {
   IProductVariant,
   ProductVariantModel,
-} from "../models/product/productVariantModel";
-import { IOrderQuantity } from "../types/modalTypes";
+} from "../../models/product/productVariantModel";
+import { IOrderQuantity } from "../../types/modalTypes";
 
 // get Cart
 export const getCart: RequestHandler = async (
@@ -34,23 +34,19 @@ export const getCart: RequestHandler = async (
       return;
     }
     if (cartData.products.length === 0) {
-      res
-        .status(200)
-        .json({
-          message: "Cart is empty",
-          data: { products: [], totalPrice: 0 },
-        });
+      res.status(200).json({
+        message: "Cart is empty",
+        data: { products: [], totalPrice: 0 },
+      });
       return;
     }
 
     const totalPrice = await cartData.getTotalPrice();
 
-    res
-      .status(200)
-      .json({
-        message: "Successful",
-        data: { products: cartData.products, totalPrice },
-      });
+    res.status(200).json({
+      message: "Successful",
+      data: { products: cartData.products, totalPrice },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
@@ -67,12 +63,10 @@ export const addToCart: RequestHandler = async (
     // get the variantId, quantity size, color ** define Joi
     const { error, value } = addToCartSchema.validate(req.body);
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const { variantId, size, quantity: requestedQuantity } = value;
@@ -181,12 +175,10 @@ export const addToCart: RequestHandler = async (
       return;
     }
     const totalPrice = await updatedCart.getTotalPrice();
-    res
-      .status(200)
-      .json({
-        message: "Product successfully added",
-        data: { products: updatedCart.products, totalPrice },
-      });
+    res.status(200).json({
+      message: "Product successfully added",
+      data: { products: updatedCart.products, totalPrice },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
@@ -206,12 +198,10 @@ export const updateProductCartQuantity: RequestHandler = async (
       updateDetails: req.body,
     });
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const { variantId } = value;
@@ -326,12 +316,10 @@ export const deleteCartProduct: RequestHandler = async (
       deleteDetails: req.body,
     });
     if (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
       return;
     }
     const cartId = req.cartId;
@@ -378,12 +366,10 @@ export const deleteCartProduct: RequestHandler = async (
       return;
     }
     const totalPrice = await updatedCart.getTotalPrice();
-    res
-      .status(200)
-      .json({
-        message: "Product removed successfully",
-        data: { products: updatedCart.products, totalPrice },
-      });
+    res.status(200).json({
+      message: "Product removed successfully",
+      data: { products: updatedCart.products, totalPrice },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });

@@ -2,19 +2,23 @@ import { Request, Response, RequestHandler } from "express";
 import bcrypt from "bcryptjs";
 import clc from "cli-color";
 
-import { UserModel } from "../models/userModel";
-import { emailVerification } from "./verificationController";
-import { CartModel, ICart } from "../models/cartModel";
-import { jwtGenerator } from "./authController";
+import { UserModel } from "../../models/userModel";
+import { emailVerification } from "./verification/emailSender";
+import { CartModel, ICart } from "../../models/cartModel";
 
-import { AuthRequest } from "../middleware/authMiddleware";
-import { ClientSession, IObjectId } from "../types/modalTypes";
-import { DbSessionRequest } from "../middleware/sessionMiddleware";
-import { ProductVariantModel } from "../models/product/productVariantModel";
-import { IOrder, OrderModel } from "../models/orderModel";
+import { AuthRequest } from "../../middleware/authMiddleware";
+import { ClientSession, IObjectId } from "../../types/modalTypes";
+import { DbSessionRequest } from "../../middleware/sessionMiddleware";
+import { ProductVariantModel } from "../../models/product/productVariantModel";
+import { OrderModel } from "../../models/orderModel";
 import mongoose from "mongoose";
-import { getOrdersSchema, loginSchema, orderIdSchema, registerSchema } from "../types/userControllerTypes";
-import { validIdSchema } from "../types/productTypes";
+import {
+  getOrdersSchema,
+  loginSchema,
+  orderIdSchema,
+  registerSchema,
+} from "../../types/userControllerTypes";
+import { jwtGenerator } from "../../utils/jwtGenerator";
 
 export const registerUser: RequestHandler = async (
   req: Request,
@@ -180,13 +184,18 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
     }
     const { products, totalPrice, totalCost, purchaseErrors } = order;
     // Add allocated elements to the cart
-    const orderData = await OrderModel.create([{
-      user: userId,
-      products,
-      totalPrice,
-      totalCost,
-      reservedUntil: new Date(Date.now() + paymentTimeout)
-    }],{session});
+    const orderData = await OrderModel.create(
+      [
+        {
+          user: userId,
+          products,
+          totalPrice,
+          totalCost,
+          reservedUntil: new Date(Date.now() + paymentTimeout),
+        },
+      ],
+      { session }
+    );
 
     if (!orderData) {
       res.status(400).json({
@@ -196,21 +205,22 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
       return;
     }
     // Combine the error & order (exclude cost, totalCost and units)
-    const filteredOrder = [...purchaseErrors]
-    products.forEach(product =>{
-      const quantityLength= product.quantity.length
-      // delete units and cost 
-      delete product.cost
-      delete product.units
-      for(let i=0;i<quantityLength;i++){
+    const filteredOrder = [...purchaseErrors];
+    products.forEach((product) => {
+      const quantityLength = product.quantity.length;
+      // delete units and cost
+      delete product.cost;
+      delete product.units;
+      for (let i = 0; i < quantityLength; i++) {
         const elemQuantity = product.quantity[i];
-        filteredOrder.push({...product,quantity:[elemQuantity]})
+        filteredOrder.push({ ...product, quantity: [elemQuantity] });
       }
-    })
+    });
     const orderId = orderData[0]._id;
-    res
-      .status(200)
-      .json({ message: "Order has been successfully placed", data: {_id: orderId,products:filteredOrder,totalPrice} });
+    res.status(200).json({
+      message: "Order has been successfully placed",
+      data: { _id: orderId, products: filteredOrder, totalPrice },
+    });
 
     setTimeout(async () => {
       // console.log(clc.green("Order timeout processing..."));
@@ -248,17 +258,18 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
                   arrayFilters: [{ "elem.size": size }],
                 },
               });
-              const updateVariantDetails =
-                await ProductVariantModel.bulkWrite(restockOps, {
+              const updateVariantDetails = await ProductVariantModel.bulkWrite(
+                restockOps,
+                {
                   session: session2,
-                });
+                }
+              );
               if (updateVariantDetails.modifiedCount !== restockOps.length) {
                 throw new Error("Stock partially updated -- Update reverted");
               }
-              const deletedOrder = await OrderModel.findByIdAndDelete(
-                orderId,
-                { session: session2 }
-              );
+              const deletedOrder = await OrderModel.findByIdAndDelete(orderId, {
+                session: session2,
+              });
               if (!deletedOrder) {
                 throw new Error("Failed to delete order -- Update reverted");
               }
@@ -266,7 +277,7 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
             }
           }
         }
-        
+
         await session2.commitTransaction();
         session2.endSession();
       } catch (error: any) {
@@ -279,7 +290,6 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
         }
       }
     }, paymentTimeout);
-
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
@@ -287,11 +297,11 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
 };
 
 // Payment request (for testing purpose for now, later use stripe)
-export const confirmPayment = async (req:DbSessionRequest,res:Response)=>{
-  try{
-    const userId= req.userId as IObjectId
-    const session = req.dbSession
-    const cartId= req.cartId as IObjectId
+export const confirmPayment = async (req: DbSessionRequest, res: Response) => {
+  try {
+    const userId = req.userId as IObjectId;
+    const session = req.dbSession;
+    const cartId = req.cartId as IObjectId;
     const { error, value } = orderIdSchema.validate(req.body);
     if (error) {
       res.status(400).json({
@@ -300,51 +310,74 @@ export const confirmPayment = async (req:DbSessionRequest,res:Response)=>{
       });
       return;
     }
-    const orderId= value.orderId
+    const orderId = value.orderId;
     // Change the paymentStatus to "Complete"
-    const orderData = await OrderModel.findById(orderId)
-    if(!orderData){
+    const orderData = await OrderModel.findById(orderId);
+    if (!orderData) {
       res.status(404).json({ message: "Order not found" });
       return;
     }
-    if(orderData.paymentStatus!=="Pending" || orderData.user.toString()!==userId.toString()){
-      const message = orderData.paymentStatus !== "Pending"?"Order payment already confirmed":"Order not found"
-      res.status(404).json({ message});
+    if (
+      orderData.paymentStatus !== "Pending" ||
+      orderData.user.toString() !== userId.toString()
+    ) {
+      const message =
+        orderData.paymentStatus !== "Pending"
+          ? "Order payment already confirmed"
+          : "Order not found";
+      res.status(404).json({ message });
       return;
     }
-    const updatedOrder = await OrderModel.findByIdAndUpdate(orderId,{paymentStatus:"Complete"},{session,new:true})
-    if(!updatedOrder){
+    const updatedOrder = await OrderModel.findByIdAndUpdate(
+      orderId,
+      { paymentStatus: "Complete" },
+      { session, new: true }
+    );
+    if (!updatedOrder) {
       res.status(404).json({ message: "Order not found" });
       return;
     }
-    // Add orderId to user 
-    const updatedUser = await UserModel.findByIdAndUpdate(userId,{$addToSet:{orders:orderId}},{session,new:true})
-    // Empty the cart 
-    const updatedCart = await CartModel.findByIdAndUpdate(cartId,{$set:{products:[]}},{session,new:true})
-    // Update unitsSold in the variant 
-    const unitsSoldOps = updatedOrder.products.map((product)=>{
+    // Add orderId to user
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      { $addToSet: { orders: orderId } },
+      { session, new: true }
+    );
+    // Empty the cart
+    const updatedCart = await CartModel.findByIdAndUpdate(
+      cartId,
+      { $set: { products: [] } },
+      { session, new: true }
+    );
+    // Update unitsSold in the variant
+    const unitsSoldOps = updatedOrder.products.map((product) => {
       return {
-      updateOne:{
-        filter:{_id:product.variant},
-        update:{$inc:{unitsSold:product.units}}
-      }
-    }})
-    const updateVariantDetails = await ProductVariantModel.bulkWrite(unitsSoldOps,{session})
-    if(updateVariantDetails.modifiedCount!==unitsSoldOps.length){
-      res.status(400).json({message:"Try again later! Failed to confirm payment"})
+        updateOne: {
+          filter: { _id: product.variant },
+          update: { $inc: { unitsSold: product.units } },
+        },
+      };
+    });
+    const updateVariantDetails = await ProductVariantModel.bulkWrite(
+      unitsSoldOps,
+      { session }
+    );
+    if (updateVariantDetails.modifiedCount !== unitsSoldOps.length) {
+      res
+        .status(400)
+        .json({ message: "Try again later! Failed to confirm payment" });
     }
-    res.status(200).json({message:"Order payment succeeded"})
-    
-  }catch(error){
+    res.status(200).json({ message: "Order payment succeeded" });
+  } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
   }
-}
+};
 
 // Get orders (with pagination)
-export const getOrders = async (req:AuthRequest,res:Response)=>{
-  try{
-    const userId= req.userId
+export const getOrders = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
     const { error, value } = getOrdersSchema.validate(req.query);
     if (error) {
       res.status(400).json({
@@ -353,42 +386,46 @@ export const getOrders = async (req:AuthRequest,res:Response)=>{
       });
       return;
     }
-    const userData = await UserModel.findById(userId,"orders")
-    if(!userData){
-      throw new Error("User data not available")
+    const userData = await UserModel.findById(userId, "orders");
+    if (!userData) {
+      throw new Error("User data not available");
     }
     const { orders } = userData;
     const { page, limit } = value;
-    const totalPages= Math.floor((orders.length-1)/limit)+1
-    if (orders.length===0) {
+    const totalPages = Math.floor((orders.length - 1) / limit) + 1;
+    if (orders.length === 0) {
       res.status(404).json({
         message: "No orders found!",
       });
       return;
     }
-    if(page>totalPages){
+    if (page > totalPages) {
       res.status(400).json({
-        message:
-          "Validation failed: requested page exceeds totalPages"
+        message: "Validation failed: requested page exceeds totalPages",
       });
       return;
     }
-    const skip= (page-1)*limit
-    const selectedOrders = orders.slice(skip,skip+limit).reverse()
+    const skip = (page - 1) * limit;
+    const selectedOrders = orders.slice(skip, skip + limit).reverse();
     // Fetch orders & include needed data (link them with the product and productVar)
-    const ordersData = await OrderModel.find({_id:{$in:selectedOrders}},"_id totalPrice deliveryStatus createdAt")
+    const ordersData = await OrderModel.find(
+      { _id: { $in: selectedOrders } },
+      "_id totalPrice deliveryStatus createdAt"
+    );
 
-    res.status(200).json({message:"Orders loaded successfully",data:{orders:ordersData,page,totalPages}}) 
-
-  }catch(error){
+    res.status(200).json({
+      message: "Orders loaded successfully",
+      data: { orders: ordersData, page, totalPages },
+    });
+  } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
   }
-}
+};
 // Get order
-export const getOrder = async (req:AuthRequest,res:Response)=>{
-  try{
-    const {userId}= req 
+export const getOrder = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req;
     const { error, value } = orderIdSchema.validate(req.params);
     if (error) {
       res.status(400).json({
@@ -397,19 +434,30 @@ export const getOrder = async (req:AuthRequest,res:Response)=>{
       });
       return;
     }
-    const {orderId} = value
+    const { orderId } = value;
     // Check if the user has such an Id (include in the find)
-    const orderData = await OrderModel.findOne({_id:orderId,user:userId},{"updatedAt":0,"totalCost":0,"products.cost":0,"products.units":0,"reservedUntil":0})
-    if(!orderData){
-      res.status(404).json({message:"Order not found"})
-      return
+    const orderData = await OrderModel.findOne(
+      { _id: orderId, user: userId },
+      {
+        updatedAt: 0,
+        totalCost: 0,
+        "products.cost": 0,
+        "products.units": 0,
+        reservedUntil: 0,
+      }
+    );
+    if (!orderData) {
+      res.status(404).json({ message: "Order not found" });
+      return;
     }
-    res.status(200).json({message:"Order loaded successfully",data:orderData})    
-  }catch(error){
+    res
+      .status(200)
+      .json({ message: "Order loaded successfully", data: orderData });
+  } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
   }
-}
+};
 // ? Contact Support
 
 // ? Send complain or return request

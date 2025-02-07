@@ -2,10 +2,8 @@ import { Request, RequestHandler, Response } from "express";
 import bcrypt from "bcryptjs";
 
 import { UserModel } from "../../models/userModel";
-import { jwtGenerator } from "../authController";
-import {
-  ClientSession,
-  IObjectId,} from "../../types/modalTypes";
+import { jwtGenerator } from "../user/verification/authController";
+import { ClientSession, IObjectId } from "../../types/modalTypes";
 import { AuthRequest } from "../../middleware/authMiddleware";
 import {
   IBase64Image,
@@ -15,14 +13,11 @@ import {
 } from "../../types/adminControllerTypes";
 import { ProductImageModel } from "../../models/product/productImageModel";
 import { ProductModel } from "../../models/product/productModel";
-import {
-  updateDeliveryStatusSchema,
-} from "../../types/productTypes";
+import { updateDeliveryStatusSchema } from "../../types/productTypes";
 import { DbSessionRequest } from "../../middleware/sessionMiddleware";
 import { productIdSchema } from "../../types/publicControllerTypes";
 import { loginSchema } from "../../types/userControllerTypes";
 import { OrderModel } from "../../models/orderModel";
-
 
 // Admin login
 export const adminLogin: RequestHandler = async (
@@ -132,7 +127,6 @@ export const addProductImage: RequestHandler = async (
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 // View product & its variants
 export const getProduct = async (req: Request, res: Response) => {
