@@ -11,7 +11,7 @@ import {
 } from "./aggregates";
 
 // Get Dashboad 
-// (Daily Order count) / (Total Sales & Profit with filters) / Most Sold products / daily or monthly Sales Graph / Products that are out of stock (based on unitsSold order)/ Most recent orders / Delivery pending orders
+// (Daily Order count) / (Total Sales & Profit with filters) / Most Sold products / monthly or yearly Sales Graph / Products that are out of stock (based on unitsSold order)/ Most recent orders / Delivery pending orders
 export const getDashboard = async (req: AuthRequest, res: Response) => {
   try {
     const { error, value } = getDashboardSchema.validate(req.query);

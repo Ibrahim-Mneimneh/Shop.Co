@@ -1,15 +1,15 @@
 import { query, Request, RequestHandler, Response } from "express";
-import { IObjectId } from "../types/modalTypes";
+import { IObjectId } from "../../types/modalTypes";
 import mongoose, { Types } from "mongoose";
 
-import { ProductModel } from "../models/product/productModel";
-import { ProductImageModel } from "../models/product/productImageModel";
+import { ProductModel } from "../../models/product/productModel";
+import { ProductImageModel } from "../../models/product/productImageModel";
 import {
   filterProductsSchema,
   productIdSchema,
   variantIdSchema,
-} from "../types/publicControllerTypes";
-import { ProductVariantModel } from "../models/product/productVariantModel";
+} from "../../types/publicControllerTypes";
+import { ProductVariantModel } from "../../models/product/productVariantModel";
 
 export const getImage: RequestHandler = async (req: Request, res: Response) => {
   try {
@@ -71,11 +71,11 @@ export const getVariant = async (req: Request, res: Response) => {
       res.status(404).json({ message: "Product not found" });
       return;
     }
-    const filteredProductData =productData.toJSON()
+    const filteredProductData = productData.toJSON();
     const filteredVariantData = variantData.toJSON();
     res.status(200).json({
       message: "Product details available",
-      data: { ...filteredProductData, ...filteredVariantData},
+      data: { ...filteredProductData, ...filteredVariantData },
     });
   } catch (error) {
     console.log(error);
