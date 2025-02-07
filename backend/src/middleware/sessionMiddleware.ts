@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Response } from "express";
 import mongoose, { ClientSession } from "mongoose";
 import { AuthRequest } from "./authMiddleware";
 
@@ -23,9 +23,10 @@ export const sessionMiddleware = async (req:DbSessionRequest,res:Response,next:N
         next()
     }catch(error){
         if (!transactionEnded) {
-            await session.abortTransaction(); // Ensure transaction is aborted on error
+            await session.abortTransaction();
             transactionEnded = true;
         }
+        console.error("Session Middleware Error:", error);
         res.status(500).json({message:"Server Error"})
     }
 }
