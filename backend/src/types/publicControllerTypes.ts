@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { validIdSchema } from "./productTypes";
+import { validIdSchema, validSize, validSubCategory } from "./productTypes";
 
 export const filterProductsSchema = Joi.object({
   filterDetails: {
@@ -41,29 +41,12 @@ export const filterProductsSchema = Joi.object({
     category: Joi.string().valid("Men", "Women", "Kids").messages({
       "any.only": "Category must be one of: Men, Women, or Kids.",
     }),
-    subCategory: Joi.string().valid(
-      "Jackets",
-      "Pullover",
-      "Suits",
-      "Pants",
-      "T-Shirts",
-      "Accessories"
-    ),
+    subCategory: validSubCategory,
     name: Joi.string(),
     onSale: Joi.boolean().truthy("true").falsy("false").optional(),
     inStock: Joi.string().valid("In Stock", "Out of Stock"),
     size: Joi.array().items(
-      Joi.string().valid(
-        "XXS",
-        "XS",
-        "S",
-        "M",
-        "L",
-        "XL",
-        "XXL",
-        "XXXL",
-        "One-Size"
-      )
+      validSize
     ).min(1).max(4),
     rating: Joi.string()
       .custom((value, helpers) => {

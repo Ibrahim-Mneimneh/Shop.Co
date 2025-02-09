@@ -27,9 +27,14 @@ export interface IProductRef {
   image?:IObjectId
 }
 
-export interface IDeleteProduct {
+export interface IProductStockUpdate {
   status: string;
   quantity?: IQuantity[];
-  stockStatus?: string;
+  stockStatus?: "In Stock" | "Out of Stock";
   totalQuantity?: number;
+}
+
+export interface IBase64Image {
+  type: string;
+  content: string;
 }
