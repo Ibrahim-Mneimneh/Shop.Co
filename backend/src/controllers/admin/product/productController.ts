@@ -4,7 +4,11 @@ import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, up
 import { ProductModel } from "../../../models/product/productModel";
 import { DbSessionRequest } from "../../../middleware/sessionMiddleware";
 import { IProductVariant, IQuantity, ProductVariantModel } from "../../../models/product/productVariantModel";
-import { IDeleteProduct, IObjectId, IProductRef } from "../../../types/modalTypes";
+import {
+  IProductStockUpdate,
+  IObjectId,
+  IProductRef,
+} from "../../../types/modalTypes";
 import { ClientSession } from "mongoose";
 
 // Add a product
@@ -198,7 +202,7 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
       res.status(404).json({ message: "Product not found" });
       return;
     }
-    const updateObj: IDeleteProduct = { status: "Inactive" };
+    const updateObj: IProductStockUpdate = { status: "Inactive" };
     if (clearStock === "true") {
       updateObj.quantity = [];
       updateObj.stockStatus = "Out of Stock";
@@ -239,7 +243,7 @@ export const deleteProductVariant = async (
       return;
     }
     const { clearStock = "false", Id: variantId } = value;
-    const updateObj: IDeleteProduct = { status: "Inactive" };
+    const updateObj: IProductStockUpdate = { status: "Inactive" };
     if (clearStock === "true") {
       updateObj.quantity = [];
       updateObj.stockStatus = "Out of Stock";
@@ -255,6 +259,54 @@ export const deleteProductVariant = async (
       return;
     }
     res.status(200).json({ message: "Product variant successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export const reActivateProduct = async (req: DbSessionRequest, res: Response) => {
+  try {
+    const { error, value } = reActivateProductSchema.validate({
+      Id: req.params.productId,
+      stock: req.query.stock, // only productVars with stock will be activated ****
+    });
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
+      return;
+    }
+    // Get validated query parameters
+    const { stock = "false", Id: productId } = value;
+    const session = req.dbSession as ClientSession;
+    // soft delete for the product
+    const updatedProduct = await ProductModel.findByIdAndUpdate(
+      productId,
+      { $set: { status: "Active" },quantity:stock},
+      { new: true, session }
+    );
+    if (!updatedProduct) {
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+    const updateObj: IProductStockUpdate = { status: "Inactive" };
+    if (stock === "true") {
+      updateObj.quantity = [];
+      updateObj.totalQuantity = 100; // add the total in the schema ******
+    }
+    //update its variants' status and reset their quantity
+    const updatedVariants = await ProductVariantModel.updateMany(
+      { _id: { $in: updatedProduct.variants } },
+      { $set: updateObj },
+      { session }
+    );
+    if (!updatedVariants) {
+      res.status(400).json({ message: "Failed to re-activate product" });
+      return;
+    }
+    res.status(200).json({ message: "Product activated successfully" });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
