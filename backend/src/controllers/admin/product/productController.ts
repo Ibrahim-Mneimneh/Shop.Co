@@ -1,9 +1,20 @@
 import { Request, RequestHandler, Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
-import { addProductSchema, addProductVariantSchema, deleteProductQuerySchema, updateQuantitySchema } from "../../../types/productTypes";
+import {
+  addProductSchema,
+  addProductVariantSchema,
+  deleteProductQuerySchema,
+  reActivateProductSchema,
+  updateQuantitySchema,
+  validIdSchema,
+} from "../../../types/productTypes";
 import { ProductModel } from "../../../models/product/productModel";
 import { DbSessionRequest } from "../../../middleware/sessionMiddleware";
-import { IProductVariant, IQuantity, ProductVariantModel } from "../../../models/product/productVariantModel";
+import {
+  IProductVariant,
+  IQuantity,
+  ProductVariantModel,
+} from "../../../models/product/productVariantModel";
 import {
   IProductStockUpdate,
   IObjectId,
@@ -206,7 +217,7 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
     if (clearStock === "true") {
       updateObj.quantity = [];
       updateObj.stockStatus = "Out of Stock";
-      updateObj.totalQuantity=0
+      updateObj.totalQuantity = 0;
     }
     //update its variants' status and reset their quantity
     const updatedVariants = await ProductVariantModel.updateMany(
@@ -265,11 +276,15 @@ export const deleteProductVariant = async (
   }
 };
 
-export const reActivateProduct = async (req: DbSessionRequest, res: Response) => {
+export const reActivateProduct = async (
+  req: DbSessionRequest,
+  res: Response
+) => {
   try {
     const { error, value } = reActivateProductSchema.validate({
-      Id: req.params.productId,
-      stock: req.query.stock, // only productVars with stock will be activated ****
+      productId: req.params.productId,
+      activateAll: req.query.all ? req.query.all : "true",
+      variants: req.body.variants,
     });
     if (error) {
       res.status(400).json({
@@ -278,32 +293,43 @@ export const reActivateProduct = async (req: DbSessionRequest, res: Response) =>
       });
       return;
     }
-    // Get validated query parameters
-    const { stock = "false", Id: productId } = value;
+    const {
+      productId,
+      variants,
+    }: { productId: IObjectId; variants: IObjectId[] } = value;
     const session = req.dbSession as ClientSession;
     // soft delete for the product
     const updatedProduct = await ProductModel.findByIdAndUpdate(
       productId,
-      { $set: { status: "Active" },quantity:stock},
+      { $set: { status: "Active" } },
       { new: true, session }
     );
     if (!updatedProduct) {
       res.status(404).json({ message: "Product not found" });
       return;
     }
-    const updateObj: IProductStockUpdate = { status: "Inactive" };
-    if (stock === "true") {
-      updateObj.quantity = [];
-      updateObj.totalQuantity = 100; // add the total in the schema ******
+    if(variants){
+      const variantErrors = variants
+        .map((variantId, index) => {
+          if (updatedProduct.variants.includes(variantId)) {
+            return null;
+          }
+          return `Invalid variant ${variantId.toString()} at index: ${index}`;
+        })
+        .filter((elem) => elem !== null);
+      if (variantErrors.length > 0) {
+        res.status(400).json({ message: variantErrors.join(".") });
+        return;
+      }
     }
     //update its variants' status and reset their quantity
     const updatedVariants = await ProductVariantModel.updateMany(
-      { _id: { $in: updatedProduct.variants } },
-      { $set: updateObj },
-      { session }
+      { _id: { $in: variants?variants:updatedProduct.variants }, product: productId },
+      { $set: { status: "Active" } },
+      { new: true, session }
     );
-    if (!updatedVariants) {
-      res.status(400).json({ message: "Failed to re-activate product" });
+    if (updatedVariants.matchedCount !== updatedVariants.modifiedCount) {
+      res.status(400).json({ message: "Product re-activation failed" });
       return;
     }
     res.status(200).json({ message: "Product activated successfully" });
