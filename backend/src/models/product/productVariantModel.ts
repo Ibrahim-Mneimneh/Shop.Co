@@ -399,6 +399,45 @@ productVariantSchema.statics.updateQuantity = async function (
           purchaseFlag = true;
         }
       }
+      // Update stockStatus
+      const stockOps = orderProducts.map((order) => {
+        const { variant } = order;
+        return {
+          updateOne: {
+            filter: { _id: variant },
+            update: [
+              {
+                $set: {
+                  stockStatus: {
+                    $switch: {
+                      branches: [
+                        {
+                          case: { $eq: ["$totalQuantity", 0] },
+                          then: "Out of Stock",
+                        },
+                        {
+                          case: { $lte: ["$totalQuantity", 10] },
+                          then: "Low Stock",
+                        },
+                      ],
+                      default: "In Stock",
+                    },
+                  },
+                },
+              },
+            ],
+            upsert: false,
+          },
+        };
+      });
+
+      const stockUpdates = await ProductVariantModel.bulkWrite(stockOps);
+      if (stockUpdates.modifiedCount !== orderProducts.length) {
+        return {
+          success: false,
+          errorMessage: `An error occured`, // Throw server error *************
+        };
+      }
       // format totalPrice & totalCost
       totalPrice = parseFloat(totalPrice.toFixed(2));
       totalCost = parseFloat(totalCost.toFixed(2));
