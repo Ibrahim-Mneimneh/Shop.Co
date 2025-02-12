@@ -2,15 +2,9 @@ import { Request, RequestHandler, Response } from "express";
 import bcrypt from "bcryptjs";
 
 import { UserModel } from "../../models/userModel";
-import { jwtGenerator } from "../user/verification/authController";
-import { ClientSession, IObjectId } from "../../types/modalTypes";
+import { ClientSession, IBase64Image, IObjectId } from "../../types/modalTypes";
 import { AuthRequest } from "../../middleware/authMiddleware";
-import {
-  IBase64Image,
-  IIsValidBase64,
-  isMoreThanWeekOld,
-  isValidBase64,
-} from "../../types/adminControllerTypes";
+
 import { ProductImageModel } from "../../models/product/productImageModel";
 import { ProductModel } from "../../models/product/productModel";
 import { updateDeliveryStatusSchema } from "../../types/productTypes";
@@ -18,6 +12,8 @@ import { DbSessionRequest } from "../../middleware/sessionMiddleware";
 import { productIdSchema } from "../../types/publicControllerTypes";
 import { loginSchema } from "../../types/userControllerTypes";
 import { OrderModel } from "../../models/orderModel";
+import { jwtGenerator } from "../../utils/jwtGenerator";
+import { IIsValidBase64, isMoreThanWeekOld, isValidBase64 } from "../../utils/isValidFunctions";
 
 // Admin login
 export const adminLogin: RequestHandler = async (
@@ -201,16 +197,3 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-// View sales ** need original Price
-
-// View orders
-
-// Get out of stock products
-
-// Get Products with filters (even non active)
-
-// View purchaces
-
-// Change order status
-
-// Get out of stock products

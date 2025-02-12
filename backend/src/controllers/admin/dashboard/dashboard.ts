@@ -1,6 +1,5 @@
 import {  Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
-import { getDashboardSchema, getMostSoldProductsSchema, getRecentSchema } from "../../../types/productTypes";
 import {
   getMostRecentOrders,
   getMostSold,
@@ -9,6 +8,7 @@ import {
   getSalesAndProfit,
   getSalesGraph,
 } from "./aggregates";
+import { getDashboardSchema, getMostSoldProductsSchema, getRecentSchema } from "../../../types/adminControllerTypes";
 
 // Get Dashboad 
 // (Daily Order count) / (Total Sales & Profit with filters) / Most Sold products / monthly or yearly Sales Graph / Products that are out of stock (based on unitsSold order)/ Most recent orders / Delivery pending orders

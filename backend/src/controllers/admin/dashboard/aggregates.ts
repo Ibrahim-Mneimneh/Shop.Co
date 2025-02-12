@@ -317,7 +317,7 @@ export const getLowOnStockAgg = async (
   const lowStockAggregate: PipelineStage[] = [
     {
       $match: {
-        totalQuantity: { $lte: quantity },
+        stockStatus:"Low Stock",
         status: "Active",
       },
     },
