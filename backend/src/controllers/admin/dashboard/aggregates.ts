@@ -309,7 +309,6 @@ export const getPendingOrdersAgg = async (
 };
 
 export const getLowOnStockAgg = async (
-  quantity:number=10,
   pagination: boolean = false,
   skip: number = 0,
   limit: number = 10
@@ -363,6 +362,40 @@ export const getLowOnStockAgg = async (
   );
   try {
     const result = await ProductVariantModel.aggregate(lowStockAggregate);
+    if (pagination) return result.length === 0 ? [] : result[0];
+    return result.length === 0 ? [] : result;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getOnSaleAgg = async (
+  pagination: boolean = false,
+  skip: number = 0,
+  limit: number = 10
+) => {
+  const onSaleAgg: PipelineStage[] = [
+    {
+      $match: {
+        isOnSale: true,
+      },
+    },
+  ];
+
+  onSaleAgg.push(
+    pagination
+      ? {
+          $facet: {
+            totalCount: [{ $count: "count" }],
+            result: [{ $skip: skip }, { $limit: limit }],
+          },
+        }
+      : {
+          $limit: limit,
+        }
+  );
+  try {
+    const result = await ProductVariantModel.aggregate(onSaleAgg);
     if (pagination) return result.length === 0 ? [] : result[0];
     return result.length === 0 ? [] : result;
   } catch (error) {
