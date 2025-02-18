@@ -115,7 +115,23 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
   if (status) productFilter.status = status;
   if (color) variantFilter["variant.color"] = color;
   if (onSale) variantFilter["variant.isOnSale"] = onSale;
-  if (inStock) variantFilter["variant.stockStatus"] = inStock === "In Stock";
+  
+  if(inStock){
+    switch (inStock) {
+      case "InStock":
+        variantFilter["variant.stockStatus"] = "In Stock";
+        break;
+      case "OutofStock":
+        variantFilter["variant.stockStatus"] = "Out of Stock";
+        break;
+      case "LowStock":
+        variantFilter["variant.stockStatus"] = "Low Stock";
+        break;
+      default:
+        variantFilter["variant.stockStatus"] = "In Stock";
+        break;
+    }
+  }
 
   if (minPrice || maxPrice) {
     variantFilter.price = {};
@@ -124,9 +140,9 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
   }
 
   if (minCost || maxCost) {
-    variantFilter.price = {};
-    if (minCost) variantFilter.cost.$gte = minCost;
-    if (minCost) variantFilter.cost.$lte = maxCost;
+    variantFilter["variant.cost"] = {};
+    if (minCost) variantFilter["variant.cost"].$gte = minCost;
+    if (maxCost) variantFilter["variant.cost"].$lte = maxCost;
   }
 
   if(unitsSoldRange){
@@ -147,10 +163,10 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
         variantFilter["variant.unitsSold"] = { $gte: 1000, $lte: 10000 };
         break;
       case "10000":
-        variantFilter["variant.unitsSold"] = { $gt: 10000 };
+        variantFilter["variant.unitsSold"] = { $gte: 10000 };
         break;
       default:
-        variantFilter["variant.unitsSold"] = { $gt: 0 };
+        variantFilter["variant.unitsSold"] = { $gte: 0 };
         break;
     }
   }
@@ -174,8 +190,11 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
       case "400-500":
         variantFilter["variant.totalQuantity"] = { $gte: 400, $lte: 500 };
         break;
-      case "+500":
-        variantFilter["variant.totalQuantity"] = { $gt: 500 };
+      case "500":
+        variantFilter["variant.totalQuantity"] = { $gte: 500 };
+        break;
+      default:
+        variantFilter["variant.totalQuantity"] = { $gte: 0 };
         break;
     }
   }
