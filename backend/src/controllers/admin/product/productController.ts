@@ -6,21 +6,88 @@ import {
   deleteProductQuerySchema,
   reActivateProductSchema,
   updateQuantitySchema,
-  validIdSchema,
 } from "../../../types/productTypes";
 import { ProductModel } from "../../../models/product/productModel";
 import { DbSessionRequest } from "../../../middleware/sessionMiddleware";
 import {
   IProductVariant,
-  IQuantity,
   ProductVariantModel,
 } from "../../../models/product/productVariantModel";
 import {
   IProductStockUpdate,
   IObjectId,
   IProductRef,
+  IBase64Image,
 } from "../../../types/modalTypes";
 import { ClientSession } from "mongoose";
+import { IIsValidBase64, isValidBase64 } from "../../../utils/isValidFunctions";
+import { ProductImageModel } from "../../../models/product/productImageModel";
+
+// Upload Product Images
+export const addProductImage: RequestHandler = async (
+  req: DbSessionRequest,
+  res: Response
+) => {
+  try {
+    const { base64Images }: { base64Images: string[] } = req.body;
+    // not empty and array
+    if (!base64Images || !Array.isArray(base64Images)) {
+      res
+        .status(400)
+        .json({ message: "'base64Images' must be an array of strings" });
+      return;
+    }
+    // not more than 4 images or less than 1
+    if (base64Images.length > 4 || base64Images.length < 1) {
+      res
+        .status(400)
+        .json({ message: "You must provide between 1 and 4 images" });
+      return;
+    }
+    // check images size and  validity
+    const base64ImageData: IBase64Image[] = [];
+
+    const invalidImages = base64Images
+      .map((base64Image, index) => {
+        const { success, base64ErrorMessage, content, type }: IIsValidBase64 =
+          isValidBase64(base64Image);
+        if (!success) {
+          return `Image at index ${index} is invalid. ${base64ErrorMessage}`;
+        }
+        // when successful extract content and type
+        base64ImageData.push({ content, type });
+        return null; // Valid
+      })
+      .filter((errorMessage) => errorMessage !== null);
+
+    if (invalidImages.length > 0) {
+      res
+        .status(400)
+        .json({ message: "Validation failed: " + invalidImages.join(", ") });
+      return;
+    }
+    // save images
+    const {
+      success,
+      imageIds,
+      errorMessage,
+    }: { success: boolean; imageIds: string[]; errorMessage: string } =
+      await ProductImageModel.saveBatch(
+        base64ImageData,
+        req.dbSession as ClientSession
+      );
+    if (!success) {
+      res.status(400).json({ message: errorMessage });
+      return;
+    }
+    res
+      .status(200)
+      .json({ message: "Images added successfully", data: { imageIds } });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
 
 // Add a product
 export const addProduct: RequestHandler = async (
