@@ -1,6 +1,6 @@
 import { PipelineStage } from "mongoose";
 import { OrderModel } from "../../../models/orderModel";
-import { ProductVariantModel } from "../../../models/product/productVariantModel";
+import { ProductModel } from "../../../models/product/productModel";
 
 interface OrderMatchFilter {
   paymentStatus?: string;
@@ -15,7 +15,6 @@ export const searchOrderAgg = async (
   skip: number,
   limit: number = 10
 ) => {
-  // for now ***
   const {
     createdAt,
     deliveryStatus,
@@ -82,8 +81,7 @@ export const searchOrderAgg = async (
   return result.length === 0 ? [] : result[0];
 };
 
-export const searchProductAgg = async (filter: any, skip: number, limit: number = 10) => {
-  // for now ***
+export const searchProductAgg = async (filter: any, skip: number, limit: number = 10):Promise<{result:[],totalCount:{count:number}}> => {
   const {
     color,
     minPrice,
@@ -92,13 +90,16 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
     subCategory,
     name,
     onSale,
-    inStock,
     size,
     rating,
     sortField,
     sortOrder,
-    updatedAt,
+    inStock,
+    unitsSoldRange, // admin fields
     status,
+    minCost,
+    maxCost,
+    quantityLeft
   } = filter;
 
   const productFilter: any = {};
@@ -120,6 +121,63 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
     variantFilter.price = {};
     if (minPrice) variantFilter.price.$gte = minPrice;
     if (maxPrice) variantFilter.price.$lte = maxPrice;
+  }
+
+  if (minCost || maxCost) {
+    variantFilter.price = {};
+    if (minCost) variantFilter.cost.$gte = minCost;
+    if (minCost) variantFilter.cost.$lte = maxCost;
+  }
+
+  if(unitsSoldRange){
+    switch (unitsSoldRange) {
+      case "0-50":
+        variantFilter["variant.unitsSold"] = { $gte: 0 ,$lte:50};
+        break;
+      case "0-100":
+        variantFilter["variant.unitsSold"] = { $gte: 0, $lte: 100 };
+        break;
+      case "0-500":
+        variantFilter["variant.unitsSold"] = { $gte: 0, $lte: 500 };
+        break;
+      case "500-1000":
+        variantFilter["variant.unitsSold"] = { $gte: 500, $lte: 1000 };
+        break;
+      case "1000-10000":
+        variantFilter["variant.unitsSold"] = { $gte: 1000, $lte: 10000 };
+        break;
+      case "10000":
+        variantFilter["variant.unitsSold"] = { $gt: 10000 };
+        break;
+      default:
+        variantFilter["variant.unitsSold"] = { $gt: 0 };
+        break;
+    }
+  }
+  if (quantityLeft) {
+    switch (quantityLeft) {
+      case "0-50":
+        variantFilter["variant.totalQuantity"] = { $gte: 0, $lte: 50 };
+        break;
+      case "50-100":
+        variantFilter["variant.totalQuantity"] = { $gte: 50, $lte: 100 };
+        break;
+      case "100-200":
+        variantFilter["variant.totalQuantity"] = { $gte: 100, $lte: 200 };
+        break;
+      case "200-300":
+        variantFilter["variant.totalQuantity"] = { $gte: 200, $lte: 300 };
+        break;
+      case "300-400":
+        variantFilter["variant.totalQuantity"] = { $gte: 300, $lte: 400 };
+        break;
+      case "400-500":
+        variantFilter["variant.totalQuantity"] = { $gte: 400, $lte: 500 };
+        break;
+      case "+500":
+        variantFilter["variant.totalQuantity"] = { $gt: 500 };
+        break;
+    }
   }
 
   const searchProductAgg: PipelineStage[] = [];
@@ -206,9 +264,11 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
               saleOptions: {
                 endDate: "$variant.saleOptions.endDate",
                 discountPercentage: "$variant.saleOptions.discountPercentage",
+                salePrice: "$variant.saleOptions.salePrice",
               },
-              image: { $first: "$variant.images" },
+              images: "$variant.images",
               stockStatus: "$variant.stockStatus",
+              status:"$variant.status",
             },
           },
           name: { $first: "$name" },
@@ -250,41 +310,51 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
       category: 1,
       subCategory: 1,
       rating: 1,
-      images: "$variant.images",
+      status:"$variant.status",
+      images: { $first: "$variant.images" },
       isOnSale: "$variant.isOnSale",
       stockStatus: "$variant.stockStatus",
-      saleEndDate: {
-        $cond: {
-          if: { $eq: ["$variant.isOnSale", true] },
-          then: { $ifNull: ["$variant.saleOptions.endDate", null] },
-          else: null,
-        },
-      },
-      discountPercentage: {
-        $cond: {
-          if: { $eq: ["$variant.isOnSale", true] },
-          then: {
-            $ifNull: ["$variant.saleOptions.discountPercentage", null],
+      saleOptions: {
+        endDate: {
+          $cond: {
+            if: { $eq: ["$variant.isOnSale", true] },
+            then: { $ifNull: ["$variant.saleOptions.endDate", null] },
+            else: null,
           },
-          else: null,
         },
-      },
-      salePrice: {
-        $cond: {
-          if: { $eq: ["$variant.isOnSale", true] },
-          then: { $ifNull: ["$variant.saleOptions.salePrice", null] },
-          else: null,
+        discountPercentage: {
+          $cond: {
+            if: { $eq: ["$variant.isOnSale", true] },
+            then: {
+              $ifNull: ["$variant.saleOptions.discountPercentage", null],
+            },
+            else: null,
+          },
+        },
+        salePrice: {
+          $cond: {
+            if: { $eq: ["$variant.isOnSale", true] },
+            then: { $ifNull: ["$variant.saleOptions.salePrice", null] },
+            else: null,
+          },
         },
       },
     },
   });
   // Add limit and skip
-  searchProductAgg.push({
-    $facet: {
-      totalCount: [{ $count: "count" }],
-      result: [{ $skip: skip }, { $limit: limit }],
+  searchProductAgg.push(
+    {
+      $facet: {
+        totalCount: [{ $count: "count" }],
+        result: [{ $skip: skip }, { $limit: limit }],
+      },
     },
-  });
-  const result = await ProductVariantModel.aggregate(searchProductAgg);
-  return result.length === 0 ? [] : result[0];
+    {
+      $unwind: {
+        path: "$totalCount",
+      },
+    }
+  );
+  const result = await ProductModel.aggregate(searchProductAgg);
+  return result.length === 0 ? {result:[],totalCount:{count:0}} : result[0];
 };
