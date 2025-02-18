@@ -32,12 +32,12 @@ export const getMostSoldProductsSchema = paginationSchema.keys({
 // Extend filterProductSchema
 export const adminFilterProductsSchema = filterProductsSchema.keys({
   unitsSoldRange: Joi.string()
-    .valid("0-100", "+100", "+500", "+1000", "+10000")
+    .valid("0-50", "0-100", "0-500", "500-1000","1000-10000", "10000")
     .optional(),
   status: Joi.string().valid("Active", "Inactive").optional(),
   minCost: Joi.number().min(0).max(99999).default(0),
   maxCost: Joi.number().min(Joi.ref("minCost")).max(99999),
-  inStock: Joi.string().valid("In Stock", "Out of Stock", "Low Stock"), // override
+  inStock: Joi.string().valid("InStock", "OutofStock", "LowStock"), // override
   quantityLeft: Joi.string()
     .valid("0-50", "50-100", "100-200", "200-300", "300-400", "400-500", "+500")
     .optional(),
