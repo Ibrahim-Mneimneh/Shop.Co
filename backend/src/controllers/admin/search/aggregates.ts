@@ -7,7 +7,8 @@ interface OrderMatchFilter {
   createdAt?: { $gte: Date };
   deliveryStatus?: string;
   country?: string;
-  totalPrice?: { $gte?: number; $lte?: number };
+  totalPrice?: { $gte?: number, $lte?: number };
+  profit?:{$gte?:number, $lte?:number}
 }
 
 export const searchOrderAgg = async (
@@ -16,19 +17,20 @@ export const searchOrderAgg = async (
   limit: number = 10
 ) => {
   const {
-    createdAt,
+    orderedAt,
     deliveryStatus,
     minProfit,
     maxProfit,
     minPrice,
     maxPrice,
-    country, // fix location -> multiple variables -> returned to json returned as one **
+    country, // fix address -> multiple variables -> returned to json returned as one **
     name, // recipient name
   } = filter;
   const matchOpp: OrderMatchFilter = { paymentStatus: "Complete" };
-  if (createdAt || deliveryStatus || country) {
-    if (createdAt) {
-      matchOpp.createdAt = { $gte: createdAt };
+
+  if (orderedAt || deliveryStatus || country) {
+    if (orderedAt) {
+      matchOpp.createdAt = { $gte: orderedAt };
     }
     if (deliveryStatus) {
       matchOpp.deliveryStatus = deliveryStatus;
@@ -38,47 +40,73 @@ export const searchOrderAgg = async (
     }
     if (minPrice || maxPrice) {
       matchOpp.totalPrice = {};
-      if (minPrice) matchOpp.totalPrice = { $gte: minPrice };
-      if (maxPrice) matchOpp.totalPrice = { $lte: maxPrice };
+      if (minPrice) matchOpp.totalPrice.$gte=minPrice;
+      if (maxPrice) matchOpp.totalPrice.$lte=maxPrice;
     }
-    if (minProfit || maxProfit) {
+    if(minProfit || maxProfit){
+      matchOpp.profit= {};
+      if (minProfit) matchOpp.profit.$lte = minProfit;
+      if (maxProfit) matchOpp.profit.$gte = maxProfit;
+    }
+    if(name){
+      // TODO: Add name matching
+    }
+    if(country){
+      // TODO: Add country matching
     }
   }
   const searchAgg: PipelineStage[] = [];
-  if (name) {
+  if (minProfit || maxProfit) {
+    // add the profit field (before matching it)
     searchAgg.push({
-      $search: {
-        text: {
-          query: name,
-          path: ["name"],
+      $addFields: {
+        profit: {
+          $subtract: ["$totalPrice", "$totalCost"],
         },
       },
     });
   }
+
+  if (name || country) {
+    searchAgg.push(
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "user",
+          pipeline: [{ $project: { _id: 0, name: 1, address: 1 } }],
+        },
+      },
+      {
+        $addFields: {
+          user: { $first: "$user" },
+        },
+      }
+    );
+  }
+
   // Add the base match opperation
   searchAgg.push({ $match: matchOpp });
 
-  if (minProfit | maxProfit) {
-    searchAgg.push({
-      $match: {
-        $expr: {
-          $and: [
-            { $gte: [{ $subtract: ["$totalPrice", "$totalCost"] }, minProfit] },
-            { $lte: [{ $subtract: ["$totalPrice", "$totalCost"] }, maxProfit] },
-          ],
-        },
-      },
-    });
-  }
   // Add limit and skip
-  searchAgg.push({
-    $facet: {
-      totalCount: [{ $count: "count" }],
-      result: [{ $skip: skip }, { $limit: limit }],
+  searchAgg.push(
+    {
+      $facet: {
+        totalCount: [{ $count: "count" }],
+        result: [{ $skip: skip }, { $limit: limit }],
+      },
     },
-  });
+    {
+      $addFields: {
+        totalCount: {$first:"$totalCount"},
+      },
+    }
+  );
   const result = await OrderModel.aggregate(searchAgg);
-  return result.length === 0 ? [] : result[0];
+  return result.length === 0
+    ? { result: [], totalCount: { count: 0 } }
+    : result[0];
 };
 
 export const searchProductAgg = async (filter: any, skip: number, limit: number = 10):Promise<{result:[],totalCount:{count:number}}> => {
