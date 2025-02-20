@@ -4,11 +4,13 @@ import { ProductModel } from "../../../models/product/productModel";
 
 interface OrderMatchFilter {
   paymentStatus?: string;
-  createdAt?: { $gte: Date };
+  orderedAt?: { $eq: string };
   deliveryStatus?: string;
   country?: string;
-  totalPrice?: { $gte?: number, $lte?: number };
-  profit?:{$gte?:number, $lte?:number}
+  totalPrice?: { $gte?: number; $lte?: number };
+  profit?: { $gte?: number; $lte?: number };
+  "customer.name"?: { $regex: string; $options: string };
+  "customer.country"?: { $regex: string; $options: string };
 }
 
 export const searchOrderAgg = async (
@@ -23,14 +25,14 @@ export const searchOrderAgg = async (
     maxProfit,
     minPrice,
     maxPrice,
-    country, // fix address -> multiple variables -> returned to json returned as one **
-    name, // recipient name
+    country,
+    name,
   } = filter;
   const matchOpp: OrderMatchFilter = { paymentStatus: "Complete" };
 
   if (orderedAt || deliveryStatus || country) {
     if (orderedAt) {
-      matchOpp.createdAt = { $gte: orderedAt };
+      matchOpp.orderedAt = { $eq: orderedAt };
     }
     if (deliveryStatus) {
       matchOpp.deliveryStatus = deliveryStatus;
@@ -40,54 +42,81 @@ export const searchOrderAgg = async (
     }
     if (minPrice || maxPrice) {
       matchOpp.totalPrice = {};
-      if (minPrice) matchOpp.totalPrice.$gte=minPrice;
-      if (maxPrice) matchOpp.totalPrice.$lte=maxPrice;
+      if (minPrice) matchOpp.totalPrice.$gte = minPrice;
+      if (maxPrice) matchOpp.totalPrice.$lte = maxPrice;
     }
-    if(minProfit || maxProfit){
-      matchOpp.profit= {};
+    if (minProfit || maxProfit) {
+      matchOpp.profit = {};
       if (minProfit) matchOpp.profit.$lte = minProfit;
       if (maxProfit) matchOpp.profit.$gte = maxProfit;
     }
-    if(name){
-      // TODO: Add name matching
+    if (name) {
+      matchOpp["customer.name"] = { $regex: name, $options: "i" };
     }
-    if(country){
-      // TODO: Add country matching
+    if (country) {
+      matchOpp["customer.country"] = { $regex: country, $options: "i" };
     }
   }
   const searchAgg: PipelineStage[] = [];
-  if (minProfit || maxProfit) {
-    // add the profit field (before matching it)
-    searchAgg.push({
-      $addFields: {
-        profit: {
-          $subtract: ["$totalPrice", "$totalCost"],
-        },
+  // Add lookup to user (get address & name)
+  searchAgg.push(
+    {
+      $lookup: {
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "customer",
+        pipeline: [
+          {
+            $project: {
+              _id: 0,
+              name: 1,
+              country: {
+                $arrayElemAt: [{ $split: ["$address", ","] }, 0],
+              },
+              address: 1,
+            },
+          },
+        ],
       },
+    },
+    {
+      $unwind: {
+        path: "$customer",
+      },
+    }
+  );
+  if (minProfit || maxProfit || orderedAt) {
+    // add the profit field or orderdAt (before matching it)
+    const fieldObj: { profit?: any; orderedAt?: any } = {};
+    if (minProfit || maxProfit)
+      fieldObj.profit = { $subtract: ["$totalPrice", "$totalCost"] };
+    if (orderedAt) {
+      fieldObj.orderedAt = {
+        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+      };
+    }
+    searchAgg.push({
+      $addFields: fieldObj,
     });
   }
 
-  if (name || country) {
-    searchAgg.push(
-      {
-        $lookup: {
-          from: "users",
-          localField: "user",
-          foreignField: "_id",
-          as: "user",
-          pipeline: [{ $project: { _id: 0, name: 1, address: 1 } }],
-        },
-      },
-      {
-        $addFields: {
-          user: { $first: "$user" },
-        },
-      }
-    );
-  }
 
   // Add the base match opperation
   searchAgg.push({ $match: matchOpp });
+
+  // Filter data in project
+  searchAgg.push({
+    $project:{
+      _id:1,
+      orderedAt:"$createdAt",
+      deliveryStatus:1,
+      totalCost:1,
+      totalPrice:1,
+      "customer.name":1,
+      "customer.address":1
+    }
+  })
 
   // Add limit and skip
   searchAgg.push(
@@ -99,17 +128,22 @@ export const searchOrderAgg = async (
     },
     {
       $addFields: {
-        totalCount: {$first:"$totalCount"},
+        totalCount: { $first: "$totalCount" },
       },
     }
   );
+  // console.log(searchAgg);
   const result = await OrderModel.aggregate(searchAgg);
   return result.length === 0
     ? { result: [], totalCount: { count: 0 } }
     : result[0];
 };
 
-export const searchProductAgg = async (filter: any, skip: number, limit: number = 10):Promise<{result:[],totalCount:{count:number}}> => {
+export const searchProductAgg = async (
+  filter: any,
+  skip: number,
+  limit: number = 10
+): Promise<{ result: []; totalCount: { count: number } }> => {
   const {
     color,
     minPrice,
@@ -127,7 +161,7 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
     status,
     minCost,
     maxCost,
-    quantityLeft
+    quantityLeft,
   } = filter;
 
   const productFilter: any = {};
@@ -143,8 +177,8 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
   if (status) productFilter.status = status;
   if (color) variantFilter["variant.color"] = color;
   if (onSale) variantFilter["variant.isOnSale"] = onSale;
-  
-  if(inStock){
+
+  if (inStock) {
     switch (inStock) {
       case "InStock":
         variantFilter["variant.stockStatus"] = "In Stock";
@@ -173,10 +207,10 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
     if (maxCost) variantFilter["variant.cost"].$lte = maxCost;
   }
 
-  if(unitsSoldRange){
+  if (unitsSoldRange) {
     switch (unitsSoldRange) {
       case "0-50":
-        variantFilter["variant.unitsSold"] = { $gte: 0 ,$lte:50};
+        variantFilter["variant.unitsSold"] = { $gte: 0, $lte: 50 };
         break;
       case "0-100":
         variantFilter["variant.unitsSold"] = { $gte: 0, $lte: 100 };
@@ -315,7 +349,7 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
               },
               images: "$variant.images",
               stockStatus: "$variant.stockStatus",
-              status:"$variant.status",
+              status: "$variant.status",
             },
           },
           name: { $first: "$name" },
@@ -357,7 +391,7 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
       category: 1,
       subCategory: 1,
       rating: 1,
-      status:"$variant.status",
+      status: "$variant.status",
       images: { $first: "$variant.images" },
       isOnSale: "$variant.isOnSale",
       stockStatus: "$variant.stockStatus",
@@ -403,5 +437,7 @@ export const searchProductAgg = async (filter: any, skip: number, limit: number 
     }
   );
   const result = await ProductModel.aggregate(searchProductAgg);
-  return result.length === 0 ? {result:[],totalCount:{count:0}} : result[0];
+  return result.length === 0
+    ? { result: [], totalCount: { count: 0 } }
+    : result[0];
 };
