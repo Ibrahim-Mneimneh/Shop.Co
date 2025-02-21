@@ -11,8 +11,7 @@ import { sessionMiddleware } from "../middleware/sessionMiddleware";
 import { getDashboard, getMostSoldProducts, getPendingOrders, getRecentOrders } from "../controllers/admin/dashboard/dashboardController";
 import { addProduct, addProductImage, addProductVariant, deleteProduct, deleteProductVariant, reActivateProduct, restockProduct } from "../controllers/admin/product/productController";
 import { deleteVariantSale, updateVariantSale } from "../controllers/admin/product/saleController";
-import { searchProductAgg } from "../controllers/admin/search/aggregates";
-import { productSearch } from "../controllers/admin/search/searchController";
+import { orderSearch, productSearch } from "../controllers/admin/search/searchController";
 
 const router: Router = express.Router();
 
@@ -41,7 +40,8 @@ router.patch("/products/:productId/activate",sessionMiddleware,reActivateProduct
 router.delete("/products/variants/:variantId", deleteProductVariant);
 router.patch("/products/restock/:productId", sessionMiddleware, restockProduct);
 
-// Update Order Status
+// Order Routes
+router.get("/orders",orderSearch) 
 router.patch("/orders/:orderId/status", updateDeliveryStatus);
 
 export const adminRoutes = router;
