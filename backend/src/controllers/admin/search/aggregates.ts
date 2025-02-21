@@ -26,7 +26,7 @@ export const searchOrderAgg = async (
     minPrice,
     maxPrice,
     country,
-    name,
+    customerName,
   } = filter;
   const matchOpp: OrderMatchFilter = { paymentStatus: "Complete" };
 
@@ -38,7 +38,7 @@ export const searchOrderAgg = async (
       matchOpp.deliveryStatus = deliveryStatus;
     }
     if (country) {
-      matchOpp.country = country;
+      matchOpp["customer.country"] = country;
     }
     if (minPrice || maxPrice) {
       matchOpp.totalPrice = {};
@@ -47,11 +47,11 @@ export const searchOrderAgg = async (
     }
     if (minProfit || maxProfit) {
       matchOpp.profit = {};
-      if (minProfit) matchOpp.profit.$lte = minProfit;
-      if (maxProfit) matchOpp.profit.$gte = maxProfit;
+      if (minProfit) matchOpp.profit.$gte = minProfit;
+      if (maxProfit) matchOpp.profit.$lte = maxProfit;
     }
-    if (name) {
-      matchOpp["customer.name"] = { $regex: name, $options: "i" };
+    if (customerName) {
+      matchOpp["customer.name"] = { $regex: customerName, $options: "i" };
     }
     if (country) {
       matchOpp["customer.country"] = { $regex: country, $options: "i" };
