@@ -19,12 +19,13 @@ export interface IOrderQuantity {
 export interface IProductRef {
   variant: IObjectId;
   quantity: IOrderQuantity[];
+  isRated: boolean;
   price?: number;
   cost?: number;
   units?: number;
   name?: string;
   category?: "Men" | "Women" | "Kids";
-  image?:IObjectId
+  image?: IObjectId;
 }
 
 export interface IProductStockUpdate {

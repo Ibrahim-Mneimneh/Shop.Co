@@ -64,6 +64,10 @@ const orderSchema = new Schema<IOrder>(
           min: [1, "Quantity must be at least 1"],
           required: true,
         },
+        isRated:{
+          type:Boolean,
+          default:false,
+        }
       },
     ],
     totalPrice: {

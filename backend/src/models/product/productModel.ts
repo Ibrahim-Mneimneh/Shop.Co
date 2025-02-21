@@ -13,7 +13,8 @@ export interface IProduct extends Document {
     | "Pants"
     | "T-Shirts"
     | "Accessories";
-  rating: Number;
+  rating: number;
+  totalReviews:number,
   variants: Types.ObjectId[];
   expiresAt?: Date;
   status: "Active" | "Inactive" | "Draft";
@@ -50,6 +51,7 @@ const productSchema = new Schema<IProduct>(
       required: true,
     },
     rating: { type: Number, default: 0.0, min: 0.0, max: 5.0 },
+    totalReviews:{type:Number,default:0},
     variants: [{ type: Schema.ObjectId, ref: "ProductVariant" }],
     expiresAt: {
       type: Date,
