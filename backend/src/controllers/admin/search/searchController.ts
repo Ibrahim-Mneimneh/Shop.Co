@@ -1,37 +1,31 @@
 import { Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
-import { adminFilterProductsSchema } from "../../../types/adminControllerTypes";
+import {
+  adminFilterOrdersSchema,
+  adminFilterProductsSchema,
+} from "../../../types/adminControllerTypes";
 import { searchOrderAgg, searchProductAgg } from "./aggregates";
 
 // Write search orders
 export const orderSearch = async (req: AuthRequest, res: Response) => {
   const query = req.query;
-      const sizeQuery = req.query.size;
-      req.query.size =
-        sizeQuery && typeof sizeQuery === "string"
-          ? sizeQuery.split(",")
-          : undefined;
-      const { value, error } = adminFilterProductsSchema.validate(query, {
-        stripUnknown: true,
-      });
-      if (error) {
-        res.status(400).json({
-          message:
-            "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        });
-        return;
-      }
+  const { value, error } = adminFilterOrdersSchema.validate(query);
+  if (error) {
+    res.status(400).json({
+      message:
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+    });
+    return;
+  }
   const { page = 1, limit = 10 } = value;
   const skip = (page - 1) * limit;
   try {
-    const { result, totalCount: count } = await searchOrderAgg(
-      value,skip
-    );
+    const { result, totalCount: count } = await searchOrderAgg(value, skip);
     if (!result || result.length === 0) {
-      res.status(404).json({ message: "No matching products found" });
+      res.status(404).json({ message: "No matching orders found" });
       return;
     }
-    const totalCount = count[0].count;
+    const totalCount = count.count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
@@ -42,7 +36,7 @@ export const orderSearch = async (req: AuthRequest, res: Response) => {
       return;
     }
     res.status(200).json({
-      message: "Matching products found",
+      message: "Matching orders found",
       data: {
         totalPages,
         currentPage: page,
@@ -76,13 +70,14 @@ export const productSearch = async (req: AuthRequest, res: Response) => {
   const { page = 1, limit = 10 } = value;
   const skip = (page - 1) * limit;
   try {
-    const { result, totalCount:count } = await searchProductAgg(value,skip);
+    const { result, totalCount: count } = await searchProductAgg(value, skip);
     if (!result || result.length === 0) {
       res.status(404).json({ message: "No matching products found" });
       return;
     }
     const totalCount = count.count;
-    const totalPages: number =totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
+    const totalPages: number =
+      totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
       res.status(400).json({
         message:

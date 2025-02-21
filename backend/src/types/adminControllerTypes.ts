@@ -53,7 +53,7 @@ export const adminFilterOrdersSchema = Joi.object({
       "date.base": "Ordered at date must be a valid date.",
     }),
   deliveryStatus: Joi.string()
-    .valid("Pending", "Complete", "Failed")
+    .valid("Pending","In-delivery","Delivered")
     .optional(),
   minProfit: Joi.number().min(0).max(99999).default(0),
   maxProfit: Joi.number().min(Joi.ref("minProfit")).max(99999),
@@ -62,7 +62,7 @@ export const adminFilterOrdersSchema = Joi.object({
   country: Joi.string()
     .regex(/^[a-zA-Z\s]+$/)
     .optional(),
-  name: Joi.string()
+  customerName: Joi.string()
     .regex(/^[a-zA-Z\s]+$/)
     .optional(),
 });
