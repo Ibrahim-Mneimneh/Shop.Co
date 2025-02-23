@@ -1,6 +1,6 @@
 import { query, Request, RequestHandler, Response } from "express";
 import { IObjectId } from "../../types/modalTypes";
-import mongoose, { Types } from "mongoose";
+import mongoose, { PipelineStage, Types } from "mongoose";
 
 import { ProductModel } from "../../models/product/productModel";
 import { ProductImageModel } from "../../models/product/productImageModel";
@@ -92,12 +92,9 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       sizeQuery && typeof sizeQuery === "string"
         ? sizeQuery.split(",")
         : undefined;
-    const { value, error } = filterProductsSchema.validate(
-      {
-        filterDetails: query,
-      },
-      { stripUnknown: true }
-    );
+    const { value, error } = filterProductsSchema.validate(query, {
+      stripUnknown: true,
+    });
     if (error) {
       res.status(400).json({
         message:
@@ -116,12 +113,12 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       inStock,
       size,
       rating,
-      page = 1,
       sortField,
       sortOrder,
-    } = value.filterDetails;
+      page = 1,
+      limit = 10,
+    } = value;
     // Configure skip based on page
-    const limit: number = 24; // Define page limit
     const skip = (page - 1) * limit;
 
     const productFilter: any = { status: "Active" };
@@ -142,7 +139,7 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       if (maxPrice) variantFilter.price.$lte = maxPrice;
     }
 
-    const aggregationPipeline: any[] = [
+    const aggregationPipeline: PipelineStage[] = [
       { $match: productFilter },
       {
         $lookup: {
@@ -238,9 +235,9 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
 
     if (sortField) {
       const sortObj: {
-        price?: number;
-        rating?: number;
-        "variant.unitsSold"?: number;
+        price?: 1 | -1;
+        rating?: 1 | -1;
+        "variant.unitsSold"?: 1 | -1;
       } = {};
 
       if (sortOrder) {
