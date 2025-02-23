@@ -116,7 +116,7 @@ const productVariantSchema = new Schema<IProductVariant>(
       default: "In Stock",
     },
     unitsSold: { type: Number, min: 0, default: 0 },
-    product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+    product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
   },
   { timestamps: true }
 );
