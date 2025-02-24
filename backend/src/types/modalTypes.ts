@@ -19,7 +19,7 @@ export interface IOrderQuantity {
 export interface IProductRef {
   variant: IObjectId;
   quantity: IOrderQuantity[];
-  isRated: boolean;
+  isRated?: boolean;
   price?: number;
   cost?: number;
   units?: number;

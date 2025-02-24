@@ -74,3 +74,10 @@ export const getOrdersSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(2).max(30).default(10),
 });
+
+export const reviewProductSchema= Joi.object({
+  variantId:validIdSchema,
+  orderId:validIdSchema,
+  review:Joi.string().min(1).max(100),
+  rating:Joi.number().min(1).max(5)
+})
