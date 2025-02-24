@@ -33,7 +33,7 @@ export interface IProductVariant extends Document {
   status: "Active" | "Inactive";
   unitsSold: number;
   stockStatus: "In Stock" | "Low Stock" | "Out of Stock";
-  product: IProduct | Types.ObjectId;
+  product: IObjectId | IProduct;
   totalQuantity: number;
 }
 interface IProductVariantModel extends Model<IProductVariant> {
