@@ -16,9 +16,12 @@ import {
   getOrdersSchema,
   loginSchema,
   orderIdSchema,
+  rateProductSchema,
   registerSchema,
 } from "../../types/userControllerTypes";
 import { jwtGenerator } from "../../utils/jwtGenerator";
+import { RatingModel } from "../../models/product/ratingModel";
+import { IProduct } from "../../models/product/productModel";
 
 export const registerUser: RequestHandler = async (
   req: Request,
@@ -458,6 +461,59 @@ export const getOrder = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+// Rate a product (after purchase)
+export const rateProduct = async (req: AuthRequest, res: Response) => {
+  try {
+    // get the userId from token / orderId & variantId / rating through the body
+    const { userId } = req;
+    const { error, value } = rateProductSchema.validate({
+      variantId: req.params.variantId,
+      orderId: req.params.orderId,
+      review: req.body.review,
+      rating: req.body.rating,
+    });
+    if (error) {
+      res.status(400).json({
+        message:
+          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      });
+      return;
+    }
+    const { orderId, variantId, review, rating } = value;
+
+    // Check variant, ensure its active
+    const isActive = await ProductVariantModel.find({
+      _id: variantId,
+      status:"Active"
+    });
+
+    if(!isActive){
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+    // Fetch the order ensure the variantId is included & the isRated is false
+    const orderedProduct = await OrderModel.find({
+      _id: orderId,
+      products: { $elemMatch: { variant: variantId, isRated: false } },
+    });
+
+    if (!orderedProduct) {
+      res
+        .status(404)
+        .json({ message: "Order doesn't contain the selected product." });
+      return;
+    }
+    const hasReviewed = await RatingModel.find({ product }); /// ****
+
+    // add review to rev arr (userId, rating, review)
+    // inc totalReviews and update rating in accordance 
+    res.status(200).json({ message: "Review sent successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 // ? Contact Support
 
 // ? Send complain or return request
