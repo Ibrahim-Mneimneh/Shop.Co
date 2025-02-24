@@ -462,7 +462,7 @@ export const getOrder = async (req: AuthRequest, res: Response) => {
   }
 };
 // Rate a product (after purchase)
-export const rateProduct = async (req: AuthRequest, res: Response) => {
+export const reviewProduct = async (req: AuthRequest, res: Response) => {
   try {
     // get the userId from token / orderId & variantId / rating through the body
     const { userId } = req;
@@ -482,12 +482,15 @@ export const rateProduct = async (req: AuthRequest, res: Response) => {
     const { orderId, variantId, review, rating } = value;
 
     // Check variant, ensure its active
-    const isActive = await ProductVariantModel.find({
-      _id: variantId,
-      status:"Active"
-    });
+    const isActive = await ProductVariantModel.findOne(
+      {
+        _id: variantId,
+        status: "Active",
+      },
+      "product"
+    );
 
-    if(!isActive){
+    if (!isActive) {
       res.status(404).json({ message: "Product not found" });
       return;
     }
@@ -500,13 +503,46 @@ export const rateProduct = async (req: AuthRequest, res: Response) => {
     if (!orderedProduct) {
       res
         .status(404)
-        .json({ message: "Order doesn't contain the selected product." });
+        .json({ message: "Order doesn't contain the selected product" });
       return;
     }
-    const hasReviewed = await RatingModel.find({ product }); /// ****
+    const { product } = isActive;
+    const hasReviewed = await RatingModel.exists({
+      product,
+      reviews: { $elemMatch: { user: userId } },
+    });
 
-    // add review to rev arr (userId, rating, review)
-    // inc totalReviews and update rating in accordance 
+    if (hasReviewed) {
+      res.status(404).json({ message: "Product already reviewed" });
+      return;
+    }
+    const ratingData = await RatingModel.findOne({product},"-reviews")
+    if(!ratingData){
+      res.status(404).json({ message: "Product review unavailable" });
+      return;
+    }
+    const {_id,rating:oldRating,totalReviews,__v}=ratingData
+    const newRating = (totalReviews*oldRating+rating)/(totalReviews+1)
+    // update totalReviews, rating and add review
+    const updatedRating = await RatingModel.findOneAndUpdate(
+      { product,__v },
+      {
+        $push: {
+          reviews: {
+            user: userId,
+            rating,
+            review,
+          },
+        },
+        $inc: { totalReviews: 1 },
+        $set:{rating:newRating}
+      },
+      { new: true, projection: "-reviews" }
+    );
+    if (!updatedRating) {
+      res.status(400).json({ message: "Product review failed" });
+      return;
+    }
     res.status(200).json({ message: "Review sent successfully" });
   } catch (error) {
     console.log(error);
