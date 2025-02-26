@@ -10,6 +10,7 @@ import {
   variantIdSchema,
 } from "../../types/publicControllerTypes";
 import { ProductVariantModel } from "../../models/product/productVariantModel";
+import { RatingModel } from "../../models/product/ratingModel";
 
 export const getImage: RequestHandler = async (req: Request, res: Response) => {
   try {
@@ -71,11 +72,26 @@ export const getVariant = async (req: Request, res: Response) => {
       res.status(404).json({ message: "Product not found" });
       return;
     }
+    const ratingData = await RatingModel.findOne(
+      { product: variantData.product },
+      {
+        reviews: {
+          $slice: -5,
+        },
+      }
+    );
+    if(!ratingData){
+      res.status(404).json({ message: "Failed to get product review" });
+      return;
+    }
+    // Remove userId from reviews
+    const reviews=ratingData.toJSON().reviews.map(({user,...rest})=>rest)
+    
     const filteredProductData = productData.toJSON();
     const filteredVariantData = variantData.toJSON();
     res.status(200).json({
       message: "Product details available",
-      data: { ...filteredProductData, ...filteredVariantData },
+      data: { ...filteredProductData, ...filteredVariantData,reviews},
     });
   } catch (error) {
     console.log(error);
