@@ -22,6 +22,7 @@ import {
 import { ClientSession } from "mongoose";
 import { IIsValidBase64, isValidBase64 } from "../../../utils/isValidFunctions";
 import { ProductImageModel } from "../../../models/product/productImageModel";
+import { RatingModel } from "../../../models/product/ratingModel";
 
 // Upload Product Images
 export const addProductImage: RequestHandler = async (
@@ -191,6 +192,8 @@ export const addProductVariant = async (
       res.status(400).json({ message: "Invalid product:" + errorMessage });
       return;
     }
+    // Create ratingModel
+    await RatingModel.create({product:productId})
     res.status(200).json({ message: "Product variants added successfully" });
   } catch (error) {
     console.log(error);

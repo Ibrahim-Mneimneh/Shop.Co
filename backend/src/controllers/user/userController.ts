@@ -16,8 +16,8 @@ import {
   getOrdersSchema,
   loginSchema,
   orderIdSchema,
-  rateProductSchema,
   registerSchema,
+  reviewProductSchema,
 } from "../../types/userControllerTypes";
 import { jwtGenerator } from "../../utils/jwtGenerator";
 import { RatingModel } from "../../models/product/ratingModel";
@@ -466,7 +466,7 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
   try {
     // get the userId from token / orderId & variantId / rating through the body
     const { userId } = req;
-    const { error, value } = rateProductSchema.validate({
+    const { error, value } = reviewProductSchema.validate({
       variantId: req.params.variantId,
       orderId: req.params.orderId,
       review: req.body.review,
@@ -525,7 +525,7 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
     const newRating = (totalReviews*oldRating+rating)/(totalReviews+1)
     // update totalReviews, rating and add review
     const updatedRating = await RatingModel.findOneAndUpdate(
-      { product,__v },
+      { _id,__v },
       {
         $push: {
           reviews: {
