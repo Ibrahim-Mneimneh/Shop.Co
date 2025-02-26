@@ -6,6 +6,7 @@ export interface IReview {
   user: IObjectId;
   review: string;
   rating: number;
+  name:string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -34,6 +35,10 @@ const productRatingSchema = new Schema<IRating>({
           ref: "User",
           required: true,
           unique: true,
+        },
+        name:{
+          type:String,
+          required:true,
         },
         review: {
           type: String,

@@ -480,7 +480,12 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
       return;
     }
     const { orderId, variantId, review, rating } = value;
-
+    // Get user's name
+    const userData = await UserModel.findById(userId,"name")
+    if(!userData){
+      res.status(401).json({ message: "Unauthorized Access" }); // Change for later
+      return;
+    }
     // Check variant, ensure its active
     const isActive = await ProductVariantModel.findOne(
       {
@@ -530,6 +535,7 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
         $push: {
           reviews: {
             user: userId,
+            name:userData.name,
             rating,
             review,
           },
