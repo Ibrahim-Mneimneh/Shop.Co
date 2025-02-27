@@ -13,6 +13,7 @@ import { adminRoutes } from "./routes/adminRoutes";
 import { publicRouter } from "./routes/publicRoutes";
 import swaggerDoc from "./utils/swaggerConfig";
 import { SaleHandler } from "./utils/cronFunctions";
+import { HttpError } from "./utils/customErrors";
 
 dotenv.config({ path: __dirname + "/.env" });
 const app: Application = express();
@@ -26,7 +27,7 @@ app.set("view engine", "handlebars");
 app.use(express.static(path.join(__dirname, "../public")));
 
 // Limiting JSON size
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "5Mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use(async (req: Request, res: Response, next: Function) => {
@@ -51,10 +52,22 @@ app.use(`/api/${VERSION}/admin`, adminRoutes);
 // Documentation Route
 app.use(`/api/${VERSION}/docs`, swaggerUi.serve, swaggerUi.setup(swaggerDoc));
 
-// Error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).send({ message: "Something went wrong!" });
+// Unavailable Route Middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  next(new HttpError("The requested URL is not found", 404));
+});
+
+// Global Error Middleware
+app.use((err: HttpError, req: Request, res: Response, next: NextFunction) => {
+  // Get the statusCode, name & message
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+
+  // Display Server errors only
+  if (statusCode >= 500) {
+    console.error(`${clc.red("Server Error")}: ${message}`);
+  }
+  res.status(statusCode).json({ message });
 });
 
 mongoose
