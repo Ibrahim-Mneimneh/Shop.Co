@@ -1,6 +1,7 @@
 import { NextFunction, Response } from "express";
 import mongoose, { ClientSession } from "mongoose";
 import { AuthRequest } from "./authMiddleware";
+import { HttpError } from "../utils/customErrors";
 
 export interface DbSessionRequest extends AuthRequest{
     dbSession?: ClientSession
@@ -21,12 +22,12 @@ export const sessionMiddleware = async (req:DbSessionRequest,res:Response,next:N
             await session.endSession()
         })
         next()
-    }catch(error){
+    }catch(error:any){
         if (!transactionEnded) {
             await session.abortTransaction();
             transactionEnded = true;
         }
-        console.error("Session Middleware Error:", error);
-        res.status(500).json({message:"Server Error"})
+        
+        throw new HttpError(error.message, 500);  
     }
 }

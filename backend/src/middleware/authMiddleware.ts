@@ -10,6 +10,7 @@ import {
 } from "../types/jwtPayloadTypes";
 import { IObjectId } from "../types/modalTypes";
 import mongoose, { Types } from "mongoose";
+import { HttpError } from "../utils/customErrors";
 
 export interface AuthRequest extends Request {
   userId?: IObjectId;
@@ -88,7 +89,7 @@ export const authMiddleware = async (
       return;
     }
 
-    res.status(500).json({ message: "Server Error" });
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -97,7 +98,7 @@ export const adminAuthMiddleware = async (
   res: Response,
   next: NextFunction
 ) => {
-  try{
+  try {
     const { authorization } = req.headers;
 
     if (!authorization || !authorization.startsWith("Bearer ")) {
@@ -112,7 +113,7 @@ export const adminAuthMiddleware = async (
     ) as IAdminJwtPayload;
 
     const isAdminsPayload = isAdminPayload(decoded);
-    if (!isAdminsPayload || (decoded  && decoded.role !== "admin")) {
+    if (!isAdminsPayload || (decoded && decoded.role !== "admin")) {
       res.status(401).json({ message: "UnAuthorized Access" });
       return;
     }
@@ -140,7 +141,7 @@ export const adminAuthMiddleware = async (
     req.role = role as string;
     req.userId = new mongoose.Types.ObjectId(userId) as IObjectId;
     next();
-  }catch(error){
+  } catch (error:any) {
     if (error instanceof jwt.JsonWebTokenError) {
       res.status(401).json({ message: "Unauthorized Access - Invalid token" });
       return;
@@ -150,7 +151,6 @@ export const adminAuthMiddleware = async (
       res.status(401).json({ message: "Unauthorized Access - Token expired" });
       return;
     }
-    console.log(error)
-    res.status(500).json({ message: "Server Error" });
+    throw new HttpError(error.message, 500);
   }
 };
