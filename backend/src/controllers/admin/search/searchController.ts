@@ -5,6 +5,7 @@ import {
   adminFilterProductsSchema,
 } from "../../../types/adminControllerTypes";
 import { searchOrderAgg, searchProductAgg } from "./aggregates";
+import { HttpError } from "../../../utils/customErrors";
 
 // Write search orders
 export const orderSearch = async (req: AuthRequest, res: Response) => {
@@ -43,10 +44,9 @@ export const orderSearch = async (req: AuthRequest, res: Response) => {
         orders: result,
       },
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
-  }
+  } catch (error:any) {
+      throw new HttpError(error.message, 500);
+    }
 };
 
 // Write product search
@@ -93,8 +93,7 @@ export const productSearch = async (req: AuthRequest, res: Response) => {
         products: result,
       },
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };

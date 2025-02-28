@@ -12,6 +12,7 @@ import {
   ProductVariantModel,
 } from "../../models/product/productVariantModel";
 import { IOrderQuantity } from "../../types/modalTypes";
+import { HttpError } from "../../utils/customErrors";
 
 // get Cart
 export const getCart: RequestHandler = async (
@@ -47,9 +48,8 @@ export const getCart: RequestHandler = async (
       message: "Successful",
       data: { products: cartData.products, totalPrice },
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -179,9 +179,8 @@ export const addToCart: RequestHandler = async (
       message: "Product successfully added",
       data: { products: updatedCart.products, totalPrice },
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -300,9 +299,8 @@ export const updateProductCartQuantity: RequestHandler = async (
         data: { products: updatedCart.products, totalPrice },
       });
     }
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -370,8 +368,7 @@ export const deleteCartProduct: RequestHandler = async (
       message: "Product removed successfully",
       data: { products: updatedCart.products, totalPrice },
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };

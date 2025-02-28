@@ -11,6 +11,7 @@ import {
 } from "../../types/publicControllerTypes";
 import { ProductVariantModel } from "../../models/product/productVariantModel";
 import { RatingModel } from "../../models/product/ratingModel";
+import { HttpError } from "../../utils/customErrors";
 
 export const getImage: RequestHandler = async (req: Request, res: Response) => {
   try {
@@ -31,9 +32,8 @@ export const getImage: RequestHandler = async (req: Request, res: Response) => {
     res.setHeader("Content-Type", "image/" + image.type);
     const imageBuffer = Buffer.from(image.image, "base64");
     res.send(imageBuffer);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -80,22 +80,23 @@ export const getVariant = async (req: Request, res: Response) => {
         },
       }
     );
-    if(!ratingData){
+    if (!ratingData) {
       res.status(404).json({ message: "Failed to get product review" });
       return;
     }
     // Remove userId from reviews
-    const reviews=ratingData.toJSON().reviews.map(({user,...rest})=>rest)
-    
+    const reviews = ratingData
+      .toJSON()
+      .reviews.map(({ user, ...rest }) => rest);
+
     const filteredProductData = productData.toJSON();
     const filteredVariantData = variantData.toJSON();
     res.status(200).json({
       message: "Product details available",
-      data: { ...filteredProductData, ...filteredVariantData,reviews},
+      data: { ...filteredProductData, ...filteredVariantData, reviews },
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -337,8 +338,7 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
         products: filteredProducts[0].result,
       },
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };

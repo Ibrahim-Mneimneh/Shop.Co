@@ -12,6 +12,7 @@ import { loginSchema } from "../../types/userControllerTypes";
 import { OrderModel } from "../../models/orderModel";
 import { jwtGenerator } from "../../utils/jwtGenerator";
 import { isMoreThanWeekOld } from "../../utils/isValidFunctions";
+import { HttpError } from "../../utils/customErrors";
 
 // Admin login
 export const adminLogin: RequestHandler = async (
@@ -21,24 +22,21 @@ export const adminLogin: RequestHandler = async (
   try {
     const { error, value } = loginSchema.validate(req.body);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
 
     const user = await UserModel.findOne({ email: value.email });
     if (!user) {
-      res.status(404).json({ message: "User not found" });
-      return;
+      throw new HttpError("User not found", 404);
     }
 
     const match = await bcrypt.compare(value.password, user.password);
 
     if (!match) {
-      res.status(400).json({ message: "Incorrect email/password" });
-      return;
+      throw new HttpError("Incorrect email/password", 401);
     }
 
     // generate the user token (JWT)
@@ -50,9 +48,8 @@ export const adminLogin: RequestHandler = async (
     );
 
     res.status(200).json({ message: "Login Successful", data: user, token });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error:any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -85,9 +82,8 @@ export const getProduct = async (req: Request, res: Response) => {
       return;
     }
     res.status(400).json({ message: productDetails.errorMessage });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error:any) {
+    throw new HttpError(error.message, 500);
   }
 };
 export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
@@ -124,8 +120,7 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
     await orderData.save();
 
     res.status(200).json({ message: "Delivery status successfully updated" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error:any) {
+    throw new HttpError(error.message, 500);
   }
 };

@@ -13,6 +13,7 @@ import {
   EndSaleModel,
   StartSaleModel,
 } from "../../../models/product/productSale";
+import { HttpError } from "../../../utils/customErrors";
 
 // Update or Add a Sale
 export const updateVariantSale = async (
@@ -176,9 +177,8 @@ export const updateVariantSale = async (
       res.status(200).json({ message: "Sale created successfully" });
       return;
     }
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -258,8 +258,7 @@ export const deleteVariantSale = async (
     res
       .status(200)
       .json({ message: "Sale removed successfully", data: updatedVrainat });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };

@@ -23,6 +23,7 @@ import { ClientSession } from "mongoose";
 import { IIsValidBase64, isValidBase64 } from "../../../utils/isValidFunctions";
 import { ProductImageModel } from "../../../models/product/productImageModel";
 import { RatingModel } from "../../../models/product/ratingModel";
+import { HttpError } from "../../../utils/customErrors";
 
 // Upload Product Images
 export const addProductImage: RequestHandler = async (
@@ -84,10 +85,9 @@ export const addProductImage: RequestHandler = async (
     res
       .status(200)
       .json({ message: "Images added successfully", data: { imageIds } });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
-  }
+  } catch (error:any) {
+      throw new HttpError(error.message, 500);
+    }
 };
 
 // Add a product
@@ -119,9 +119,8 @@ export const addProduct: RequestHandler = async (
     res
       .status(200)
       .json({ message: "Product added successfully", data: product });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -193,11 +192,10 @@ export const addProductVariant = async (
       return;
     }
     // Create ratingModel
-    await RatingModel.create({product:productId})
+    await RatingModel.create({ product: productId });
     res.status(200).json({ message: "Product variants added successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -250,9 +248,8 @@ export const restockProduct = async (req: DbSessionRequest, res: Response) => {
       return;
     }
     res.status(200).json({ message: "Product successfully restocked" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -300,9 +297,8 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
       return;
     }
     res.status(200).json({ message: "Product deleted successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -340,9 +336,8 @@ export const deleteProductVariant = async (
       return;
     }
     res.status(200).json({ message: "Product variant successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -378,7 +373,7 @@ export const reActivateProduct = async (
       res.status(404).json({ message: "Product not found" });
       return;
     }
-    if(variants){
+    if (variants) {
       const variantErrors = variants
         .map((variantId, index) => {
           if (updatedProduct.variants.includes(variantId)) {
@@ -394,7 +389,10 @@ export const reActivateProduct = async (
     }
     //update its variants' status and reset their quantity
     const updatedVariants = await ProductVariantModel.updateMany(
-      { _id: { $in: variants?variants:updatedProduct.variants }, product: productId },
+      {
+        _id: { $in: variants ? variants : updatedProduct.variants },
+        product: productId,
+      },
       { $set: { status: "Active" } },
       { new: true, session }
     );
@@ -403,8 +401,7 @@ export const reActivateProduct = async (
       return;
     }
     res.status(200).json({ message: "Product activated successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };

@@ -22,6 +22,7 @@ import {
 import { jwtGenerator } from "../../utils/jwtGenerator";
 import { RatingModel } from "../../models/product/ratingModel";
 import { IProduct } from "../../models/product/productModel";
+import { HttpError } from "../../utils/customErrors";
 
 export const registerUser: RequestHandler = async (
   req: Request,
@@ -70,9 +71,8 @@ export const registerUser: RequestHandler = async (
 
     // send the data back with the token
     res.status(201).json({ message: "User registered Successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -132,9 +132,8 @@ export const loginUser: RequestHandler = async (
     );
 
     res.status(200).json({ message: "Login Successful", data: user, token });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -147,9 +146,8 @@ export const getUser = async (req: AuthRequest, res: Response) => {
       return;
     }
     res.status(200).json({ message: "Successful", data: userData });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -293,9 +291,8 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
         }
       }
     }, paymentTimeout);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -371,9 +368,8 @@ export const confirmPayment = async (req: DbSessionRequest, res: Response) => {
         .json({ message: "Try again later! Failed to confirm payment" });
     }
     res.status(200).json({ message: "Order payment succeeded" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
@@ -420,9 +416,8 @@ export const getOrders = async (req: AuthRequest, res: Response) => {
       message: "Orders loaded successfully",
       data: { orders: ordersData, page, totalPages },
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 // Get order
@@ -456,9 +451,8 @@ export const getOrder = async (req: AuthRequest, res: Response) => {
     res
       .status(200)
       .json({ message: "Order loaded successfully", data: orderData });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 // Rate a product (after purchase)
@@ -481,8 +475,8 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
     }
     const { orderId, variantId, review, rating } = value;
     // Get user's name
-    const userData = await UserModel.findById(userId,"name")
-    if(!userData){
+    const userData = await UserModel.findById(userId, "name");
+    if (!userData) {
       res.status(401).json({ message: "Unauthorized Access" }); // Change for later
       return;
     }
@@ -521,27 +515,27 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
       res.status(404).json({ message: "Product already reviewed" });
       return;
     }
-    const ratingData = await RatingModel.findOne({product},"-reviews")
-    if(!ratingData){
+    const ratingData = await RatingModel.findOne({ product }, "-reviews");
+    if (!ratingData) {
       res.status(404).json({ message: "Product review unavailable" });
       return;
     }
-    const {_id,rating:oldRating,totalReviews,__v}=ratingData
-    const newRating = (totalReviews*oldRating+rating)/(totalReviews+1)
+    const { _id, rating: oldRating, totalReviews, __v } = ratingData;
+    const newRating = (totalReviews * oldRating + rating) / (totalReviews + 1);
     // update totalReviews, rating and add review
     const updatedRating = await RatingModel.findOneAndUpdate(
-      { _id,__v },
+      { _id, __v },
       {
         $push: {
           reviews: {
             user: userId,
-            name:userData.name,
+            name: userData.name,
             rating,
             review,
           },
         },
         $inc: { totalReviews: 1 },
-        $set:{rating:newRating}
+        $set: { rating: newRating },
       },
       { new: true, projection: "-reviews" }
     );
@@ -550,9 +544,8 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
       return;
     }
     res.status(200).json({ message: "Review sent successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
   }
 };
 
