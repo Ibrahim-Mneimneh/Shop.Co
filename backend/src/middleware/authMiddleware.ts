@@ -27,8 +27,7 @@ export const authMiddleware = async (
     const { authorization } = req.headers;
 
     if (!authorization || !authorization.startsWith("Bearer ")) {
-      res.status(401).json({ message: "Authorization token required!" });
-      return;
+      throw new HttpError("Authorization token required", 400);
     }
     const token = authorization.split(" ")[1];
 
@@ -42,16 +41,12 @@ export const authMiddleware = async (
     const user = await UserModel.findById(userId);
     //user exists
     if (!user) {
-      res.status(404).json({ message: "UnAuthorized Access - User not found" });
-      return;
+      throw new HttpError("UnAuthorized Access - User not found", 401);
     }
 
     // if user is not verified
     if (!user.isVerified) {
-      res
-        .status(401)
-        .json({ message: "UnAuthorized Access - User not verified" });
-      return;
+      throw new HttpError("UnAuthorized Aceess - User not verified", 401);
       // Send a verification code or not accorrding to the mechanism
     }
 
@@ -67,12 +62,10 @@ export const authMiddleware = async (
     }
     // verify Token cartId matches user's cartId
     if (cartId.toString() !== user.cart.toString()) {
-      res.status(401).json({ message: "UnAuthorized Access" });
-      return;
+      throw new HttpError("UnAuthorized Access", 401);
     }
     if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(cartId)) {
-      res.status(401).json({ message: "UnAuthorized Access - Invalid Token" });
-      return;
+      throw new HttpError("UnAuthorized Access - Invalid token", 401);
     }
     req.cartId = new mongoose.Types.ObjectId(cartId) as IObjectId;
     req.userId = new mongoose.Types.ObjectId(userId) as IObjectId;
@@ -80,13 +73,11 @@ export const authMiddleware = async (
     next();
   } catch (error: any) {
     if (error instanceof jwt.JsonWebTokenError) {
-      res.status(401).json({ message: "Unauthorized Access - Invalid token" });
-      return;
+      throw new HttpError("UnAuthorized Access - Invalid token", 401);
     }
 
     if (error instanceof jwt.TokenExpiredError) {
-      res.status(401).json({ message: "Unauthorized Access - Token expired" });
-      return;
+      throw new HttpError("UnAuthorized Access - Invalid token", 401);
     }
 
     throw new HttpError(error.message, 500);
@@ -102,8 +93,7 @@ export const adminAuthMiddleware = async (
     const { authorization } = req.headers;
 
     if (!authorization || !authorization.startsWith("Bearer ")) {
-      res.status(401).json({ message: "Authorization token required!" });
-      return;
+      throw new HttpError("Authorization token required", 400);
     }
     const token = authorization.split(" ")[1];
 
@@ -114,42 +104,34 @@ export const adminAuthMiddleware = async (
 
     const isAdminsPayload = isAdminPayload(decoded);
     if (!isAdminsPayload || (decoded && decoded.role !== "admin")) {
-      res.status(401).json({ message: "UnAuthorized Access" });
-      return;
+      throw new HttpError("UnAuthorized Access", 401);
     }
     const { userId, passwordChangedAt, role } = decoded;
     const user = await UserModel.findById(userId);
     //user exists
     if (!user || user.role !== "admin") {
-      res.status(404).json({ message: "UnAuthorized Access - User not found" });
-      return;
+      throw new HttpError("UnAuthorized Access - User not found", 401);
     }
     // check if the pass is changed prev tokens are rejected
     if (
       user.passwordChangedAt &&
       user.passwordChangedAt.toISOString() > passwordChangedAt
     ) {
-      res
-        .status(401)
-        .json({ message: "UnAuthorized Access - User token expired" });
-      return;
+      throw new HttpError("UnAuthorized Access - token expired", 401);
     }
     if (!Types.ObjectId.isValid(userId)) {
-      res.status(401).json({ message: "UnAuthorized Access - Invalid Token" });
-      return;
+      throw new HttpError("UnAuthorized Access - Invalid token", 401);
     }
     req.role = role as string;
     req.userId = new mongoose.Types.ObjectId(userId) as IObjectId;
     next();
-  } catch (error:any) {
+  } catch (error: any) {
     if (error instanceof jwt.JsonWebTokenError) {
-      res.status(401).json({ message: "Unauthorized Access - Invalid token" });
-      return;
+      throw new HttpError("UnAuthorized Access - Invalid token", 401);
     }
 
     if (error instanceof jwt.TokenExpiredError) {
-      res.status(401).json({ message: "Unauthorized Access - Token expired" });
-      return;
+      throw new HttpError("UnAuthorized Access - Token expired", 401);
     }
     throw new HttpError(error.message, 500);
   }
