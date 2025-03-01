@@ -63,11 +63,10 @@ export const addToCart: RequestHandler = async (
     // get the variantId, quantity size, color ** define Joi
     const { error, value } = addToCartSchema.validate(req.body);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { variantId, size, quantity: requestedQuantity } = value;
     // ensure variant exists and is not Out of Stock or Inactive
@@ -197,11 +196,10 @@ export const updateProductCartQuantity: RequestHandler = async (
       updateDetails: req.body,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { variantId } = value;
     const { size, operation } = value.updateDetails;
@@ -314,11 +312,10 @@ export const deleteCartProduct: RequestHandler = async (
       deleteDetails: req.body,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const cartId = req.cartId;
     const { variantId } = value;

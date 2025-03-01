@@ -44,11 +44,10 @@ export const getVariant = async (req: Request, res: Response) => {
       variantId: req.params.variantId,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { variantId } = value;
     const variantData = await ProductVariantModel.findOne({
@@ -113,11 +112,10 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       stripUnknown: true,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const {
       color,

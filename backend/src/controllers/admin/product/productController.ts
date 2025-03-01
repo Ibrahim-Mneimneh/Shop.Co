@@ -85,9 +85,9 @@ export const addProductImage: RequestHandler = async (
     res
       .status(200)
       .json({ message: "Images added successfully", data: { imageIds } });
-  } catch (error:any) {
-      throw new HttpError(error.message, 500);
-    }
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
+  }
 };
 
 // Add a product
@@ -99,11 +99,10 @@ export const addProduct: RequestHandler = async (
     // validate productDetails
     const { error, value } = addProductSchema.validate(req.body);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { name, description, category, subCategory } = value;
     const product = await ProductModel.create({
@@ -136,11 +135,10 @@ export const addProductVariant = async (
       productId: req.params.productId,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const {
       productId,
@@ -208,11 +206,10 @@ export const restockProduct = async (req: DbSessionRequest, res: Response) => {
       details: req.body,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { productId }: { productId: IObjectId } = value;
     const stock: IProductRef[] = value.details.stock;
@@ -261,11 +258,10 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
       clearStock: req.query.clearStock,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     // Get validated query parameters
     const { clearStock = "false", Id: productId } = value;
@@ -313,11 +309,10 @@ export const deleteProductVariant = async (
       clearStock: req.query.clearStock,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { clearStock = "false", Id: variantId } = value;
     const updateObj: IProductStockUpdate = { status: "Inactive" };
@@ -352,11 +347,10 @@ export const reActivateProduct = async (
       variants: req.body.variants,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const {
       productId,

@@ -61,11 +61,9 @@ export const getProduct = async (req: Request, res: Response) => {
       productId: req.params.productId,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, "")
+      ,400);
     }
     // fetch for the product & variants
     const productDetails = await ProductModel.getVariants(
@@ -93,11 +91,10 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
       deliveryStatus: req.body.deliveryStatus,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { orderId, deliveryStatus } = value;
     const orderData = await OrderModel.findOne(

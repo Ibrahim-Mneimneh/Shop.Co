@@ -19,11 +19,10 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
   try {
     const { error, value } = getDashboardSchema.validate(req.query);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const {
       orderCountFrequency,
@@ -63,11 +62,10 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
 export const getMostSoldProducts = async (req: AuthRequest, res: Response) => {
   const { error, value } = getMostSoldProductsSchema.validate(req.query);
   if (error) {
-    res.status(400).json({
-      message:
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-    });
-    return;
+    throw new HttpError(
+      "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      400
+    );
   }
   const { page = 1, limit = 10, frequency } = value;
   const skip = (page - 1) * limit;
@@ -107,11 +105,10 @@ export const getMostSoldProducts = async (req: AuthRequest, res: Response) => {
 export const getRecentOrders = async (req: AuthRequest, res: Response) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
-    res.status(400).json({
-      message:
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-    });
-    return;
+    throw new HttpError(
+      "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      400
+    );
   }
   const { page = 1, limit = 10 } = value;
   const skip = (page - 1) * limit;
@@ -151,11 +148,10 @@ export const getRecentOrders = async (req: AuthRequest, res: Response) => {
 export const getPendingOrders = async (req: AuthRequest, res: Response) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
-    res.status(400).json({
-      message:
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-    });
-    return;
+    throw new HttpError(
+      "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      400
+    );
   }
   const { page = 1, limit = 10 } = value;
   const skip = (page - 1) * limit;
@@ -195,11 +191,10 @@ export const getPendingOrders = async (req: AuthRequest, res: Response) => {
 export const getProductsOnSale = async (req: AuthRequest, res: Response)=>{
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
-    res.status(400).json({
-      message:
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-    });
-    return;
+    throw new HttpError(
+      "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      400
+    );
   }
   const { page = 1, limit = 10 } = value;
   const skip = (page - 1) * limit;
@@ -235,11 +230,10 @@ export const getProductsOnSale = async (req: AuthRequest, res: Response)=>{
 export const getProductsLowOnStock = async (req: AuthRequest, res: Response) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
-    res.status(400).json({
-      message:
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-    });
-    return;
+    throw new HttpError(
+      "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      400
+    );
   }
   const { page = 1, limit = 10 } = value;
   const skip = (page - 1) * limit;

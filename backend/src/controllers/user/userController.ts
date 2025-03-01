@@ -33,11 +33,10 @@ export const registerUser: RequestHandler = async (
 
     // If the data is invalid
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     // Reformat data
     let data = {
@@ -84,11 +83,10 @@ export const loginUser: RequestHandler = async (
     // I need to require the data from the user
     const { error, value } = loginSchema.validate(req.body);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+     throw new HttpError(
+       "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+       400
+     );
     }
 
     // check if the user is available
@@ -304,11 +302,10 @@ export const confirmPayment = async (req: DbSessionRequest, res: Response) => {
     const cartId = req.cartId as IObjectId;
     const { error, value } = orderIdSchema.validate(req.body);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const orderId = value.orderId;
     // Change the paymentStatus to "Complete"
@@ -379,11 +376,10 @@ export const getOrders = async (req: AuthRequest, res: Response) => {
     const userId = req.userId;
     const { error, value } = getOrdersSchema.validate(req.query);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const userData = await UserModel.findById(userId, "orders");
     if (!userData) {
@@ -426,11 +422,10 @@ export const getOrder = async (req: AuthRequest, res: Response) => {
     const { userId } = req;
     const { error, value } = orderIdSchema.validate(req.params);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { orderId } = value;
     // Check if the user has such an Id (include in the find)
@@ -467,11 +462,10 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
       rating: req.body.rating,
     });
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const { orderId, variantId, review, rating } = value;
     // Get user's name

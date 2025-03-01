@@ -32,11 +32,10 @@ export const updateVariantSale = async (
 
     const { error, value } = updateVariantSaleSchema.validate(data);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const session = req.dbSession as ClientSession;
     const { productVarId, saleOptions } = value;
@@ -191,11 +190,10 @@ export const deleteVariantSale = async (
     const session = req.dbSession;
     const { error, value } = validIdSchema.validate(req.params.variantId);
     if (error) {
-      res.status(400).json({
-        message:
-          "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     const variantId = value;
     const variantSaleData = await ProductVariantModel.findById(variantId, {

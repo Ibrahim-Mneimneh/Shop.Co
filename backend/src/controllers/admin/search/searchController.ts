@@ -12,11 +12,10 @@ export const orderSearch = async (req: AuthRequest, res: Response) => {
   const query = req.query;
   const { value, error } = adminFilterOrdersSchema.validate(query);
   if (error) {
-    res.status(400).json({
-      message:
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-    });
-    return;
+    throw new HttpError(
+      "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      400
+    );
   }
   const { page = 1, limit = 10 } = value;
   const skip = (page - 1) * limit;
@@ -61,11 +60,10 @@ export const productSearch = async (req: AuthRequest, res: Response) => {
     stripUnknown: true,
   });
   if (error) {
-    res.status(400).json({
-      message:
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-    });
-    return;
+    throw new HttpError(
+      "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+      400
+    );
   }
   const { page = 1, limit = 10 } = value;
   const skip = (page - 1) * limit;
