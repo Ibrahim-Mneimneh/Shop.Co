@@ -12,22 +12,20 @@ import {
 import { ProductVariantModel } from "../../models/product/productVariantModel";
 import { RatingModel } from "../../models/product/ratingModel";
 import { HttpError } from "../../utils/customErrors";
+import { validIdSchema } from "../../types/productTypes";
 
 export const getImage: RequestHandler = async (req: Request, res: Response) => {
   try {
-    const imageIdString: string = req.params.imageId;
-    // Check format
-    if (!mongoose.Types.ObjectId.isValid(imageIdString)) {
-      res.status(400).json({ message: "Invalid image ID format" });
-      return;
+    const { error, value } = validIdSchema.validate(req.params.imageId);
+    if (error) {
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
-    // convert to objectId
-    const ImageId: IObjectId = new mongoose.Types.ObjectId(imageIdString);
-
-    const image = await ProductImageModel.findById(ImageId);
+    const image = await ProductImageModel.findById(value);
     if (!image) {
-      res.status(404).json({ message: "Image not found" });
-      return;
+      throw new HttpError("Image not found", 404);
     }
     res.setHeader("Content-Type", "image/" + image.type);
     const imageBuffer = Buffer.from(image.image, "base64");
@@ -55,8 +53,7 @@ export const getVariant = async (req: Request, res: Response) => {
       status: "Active",
     });
     if (!variantData) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
     // get other variants and their images
     const productData = await ProductModel.findById(
@@ -68,8 +65,7 @@ export const getVariant = async (req: Request, res: Response) => {
       select: "_id images",
     });
     if (!productData) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
     const ratingData = await RatingModel.findOne(
       { product: variantData.product },
@@ -80,8 +76,7 @@ export const getVariant = async (req: Request, res: Response) => {
       }
     );
     if (!ratingData) {
-      res.status(404).json({ message: "Failed to get product review" });
-      return;
+      throw new HttpError("Failed to get product review", 404);
     }
     // Remove userId from reviews
     const reviews = ratingData
@@ -315,18 +310,16 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       aggregationPipeline
     );
     if (filteredProducts[0] && filteredProducts[0].result.length === 0) {
-      res.status(404).json({ message: "No matching products found" });
-      return;
+      throw new HttpError("No matching products found", 404);
     }
     const totalCount = filteredProducts[0].totalCount[0].count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
+      throw new HttpError(
+        "Selected page number exceeds available totalPages: " + totalPages,
+        400
+      );
     }
     res.status(200).json({
       message: "Matching products found",
