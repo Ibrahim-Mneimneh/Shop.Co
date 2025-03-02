@@ -41,8 +41,7 @@ export const updateVariantSale = async (
     const { productVarId, saleOptions } = value;
     const product = await ProductVariantModel.findById(productVarId);
     if (!product) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
 
     const { startDate, endDate, discountPercentage } = saleOptions;
@@ -57,11 +56,10 @@ export const updateVariantSale = async (
       if (startDate && startDate !== currentSale.startDate) {
         if (!endDate && currentSale.endDate <= startDate) {
           // ensure endDate>start
-          res.status(400).json({
-            message:
-              "Validation failed: startDate should be earlier than endDate",
-          });
-          return;
+          throw new HttpError(
+            "Validation failed: startDate should be earlier than endDate",
+            400
+          );
         }
         // startSale update; remove prodvarId from old startSale to new one
         const saleUpdateOps = [
@@ -83,8 +81,7 @@ export const updateVariantSale = async (
           session,
         });
         if (startSaleUpdate.ok !== 1 || startSaleUpdate.hasWriteErrors()) {
-          res.status(400).json({ message: "Failed to update sale" });
-          return;
+          throw new HttpError("Failed to update sale", 400);
         }
         // update productVar startDate
         currentSale.startDate = startDate;
@@ -93,11 +90,10 @@ export const updateVariantSale = async (
         if (endDate && endDate !== currentSale.endDate) {
           if (!startDate && currentSale.startDate >= endDate) {
             // Ensure new end > start (old)
-            res.status(400).json({
-              message:
-                "Validation failed: startDate should be earlier than endDate",
-            });
-            return;
+            throw new HttpError(
+              "Validation failed: startDate should be earlier than endDate",
+              400
+            );
           }
           // update endSale
           const saleUpdateOps = [
@@ -119,8 +115,7 @@ export const updateVariantSale = async (
             session,
           });
           if (endSaleUpdate.ok !== 1 || endSaleUpdate.hasWriteErrors()) {
-            res.status(400).json({ message: "Failed to update sale" });
-            return;
+            throw new HttpError("Failed to update sale", 400);
           }
           // update productVar endDate
           currentSale.endDate = endDate;
@@ -141,11 +136,10 @@ export const updateVariantSale = async (
     } else {
       // Not on sale , Add sale strictly require all 3 attributes
       if (!startDate || !endDate || !discountPercentage) {
-        res.status(400).json({
-          message:
-            "Validation failed: 'startDate', 'endDate' & 'discountPercentage' are required",
-        });
-        return;
+        throw new HttpError(
+          "Validation failed: 'startDate', 'endDate' & 'discountPercentage' are required",
+          400
+        );
       }
       // fetch for start and endDates if not found create one
       const startSale = await StartSaleModel.updateOne(
@@ -159,8 +153,7 @@ export const updateVariantSale = async (
         { upsert: true, session }
       );
       if (!startSale.acknowledged || !endSale.acknowledged) {
-        res.status(400).json({ message: "Failed to add sale" });
-        return;
+        throw new HttpError("Failed to add sale", 400);
       }
       const salePrice =
         Math.round(
@@ -201,8 +194,7 @@ export const deleteVariantSale = async (
       saleOptions: 1,
     });
     if (!variantSaleData) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
     const { isOnSale, saleOptions } = variantSaleData;
     let updatedVrainat: IProductVariant | null = null;
@@ -218,8 +210,7 @@ export const deleteVariantSale = async (
           { session }
         );
         if (!endSaleData) {
-          res.status(400).json({ message: "Failed to update sale" });
-          return;
+          throw new HttpError("Failed to update sale", 400);
         }
       } else {
         // sale hasn't started
@@ -234,8 +225,7 @@ export const deleteVariantSale = async (
           { session }
         );
         if (!startSaleData || !endSaleData) {
-          res.status(400).json({ message: "Failed to remove sale" });
-          return;
+          throw new HttpError("Failed to remove sale", 400);
         }
       }
       // update variant

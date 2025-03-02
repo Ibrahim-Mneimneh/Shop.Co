@@ -79,8 +79,7 @@ export const addProductImage: RequestHandler = async (
         req.dbSession as ClientSession
       );
     if (!success) {
-      res.status(400).json({ message: errorMessage });
-      return;
+      throw new HttpError(errorMessage, 400);
     }
     res
       .status(200)
@@ -112,8 +111,7 @@ export const addProduct: RequestHandler = async (
       subCategory,
     });
     if (!product) {
-      res.status(400).json({ message: "Failed to add product" });
-      return;
+      throw new HttpError("Failed to add product", 400);
     }
     res
       .status(200)
@@ -147,12 +145,10 @@ export const addProductVariant = async (
     // check if product exists and if it already has variants
     const product = await ProductModel.findById(productId);
     if (!product) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
     if (product.status === "Active") {
-      res.status(400).json({ message: "Product variants already exist" });
-      return;
+      throw new HttpError("Product variant already exist", 400);
     }
     const variantIds: IObjectId[] = [];
     // add variants and check their images & remove their expiry (link them)
@@ -186,8 +182,7 @@ export const addProductVariant = async (
       req.dbSession as ClientSession
     );
     if (!success) {
-      res.status(400).json({ message: "Invalid product:" + errorMessage });
-      return;
+      throw new HttpError("Invalid product: " + errorMessage, 400);
     }
     // Create ratingModel
     await RatingModel.create({ product: productId });
@@ -216,8 +211,7 @@ export const restockProduct = async (req: DbSessionRequest, res: Response) => {
 
     const product = await ProductModel.findById(productId);
     if (!product) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
     // ensure the variants belong to the same product
     const variantUnavailable = stock
@@ -230,8 +224,7 @@ export const restockProduct = async (req: DbSessionRequest, res: Response) => {
       })
       .filter((errorMessage) => errorMessage !== null);
     if (variantUnavailable.length > 0) {
-      res.status(400).json({ message: "Invalid product variants" });
-      return;
+      throw new HttpError("Invalid product variant", 400);
     }
     const { success, errorMessage } = await ProductVariantModel.updateQuantity(
       "restock",
@@ -239,10 +232,10 @@ export const restockProduct = async (req: DbSessionRequest, res: Response) => {
       req.dbSession as ClientSession
     );
     if (!success) {
-      res.status(400).json({
-        message: `Failed to restock '${product.name}' of id: ${errorMessage}`,
-      });
-      return;
+      throw new HttpError(
+        `Failed to restock '${product.name}' of id: ${errorMessage}`,
+        400
+      );
     }
     res.status(200).json({ message: "Product successfully restocked" });
   } catch (error: any) {
@@ -273,8 +266,7 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
       { new: true, session }
     );
     if (!updatedProduct) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
     const updateObj: IProductStockUpdate = { status: "Inactive" };
     if (clearStock === "true") {
@@ -289,8 +281,7 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
       { session }
     );
     if (!updatedVariants) {
-      res.status(400).json({ message: "Failed to delete product" });
-      return;
+      throw new HttpError("Failed to delete product", 400);
     }
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (error: any) {
@@ -327,8 +318,7 @@ export const deleteProductVariant = async (
       { $set: updateObj }
     );
     if (!productVarUpdate) {
-      res.status(400).json({ message: "Failed to delete product" });
-      return;
+      throw new HttpError("Failed to delete product", 400);
     }
     res.status(200).json({ message: "Product variant successfully" });
   } catch (error: any) {
@@ -364,8 +354,7 @@ export const reActivateProduct = async (
       { new: true, session }
     );
     if (!updatedProduct) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
     if (variants) {
       const variantErrors = variants
@@ -377,8 +366,7 @@ export const reActivateProduct = async (
         })
         .filter((elem) => elem !== null);
       if (variantErrors.length > 0) {
-        res.status(400).json({ message: variantErrors.join(".") });
-        return;
+        throw new HttpError(variantErrors.join("."), 400);
       }
     }
     //update its variants' status and reset their quantity
@@ -391,8 +379,7 @@ export const reActivateProduct = async (
       { new: true, session }
     );
     if (updatedVariants.matchedCount !== updatedVariants.modifiedCount) {
-      res.status(400).json({ message: "Product re-activation failed" });
-      return;
+      throw new HttpError("Product re-activation failed", 400);
     }
     res.status(200).json({ message: "Product activated successfully" });
   } catch (error: any) {

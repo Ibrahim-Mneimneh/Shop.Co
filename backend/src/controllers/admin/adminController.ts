@@ -48,7 +48,7 @@ export const adminLogin: RequestHandler = async (
     );
 
     res.status(200).json({ message: "Login Successful", data: user, token });
-  } catch (error:any) {
+  } catch (error: any) {
     throw new HttpError(error.message, 500);
   }
 };
@@ -62,8 +62,9 @@ export const getProduct = async (req: Request, res: Response) => {
     });
     if (error) {
       throw new HttpError(
-        "Validation failed: " + error.details[0].message.replace(/\"/g, "")
-      ,400);
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
     // fetch for the product & variants
     const productDetails = await ProductModel.getVariants(
@@ -79,8 +80,8 @@ export const getProduct = async (req: Request, res: Response) => {
       });
       return;
     }
-    res.status(400).json({ message: productDetails.errorMessage });
-  } catch (error:any) {
+    throw new HttpError(productDetails.errorMessage, 400);
+  } catch (error: any) {
     throw new HttpError(error.message, 500);
   }
 };
@@ -102,22 +103,20 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
       "deliveryStatus updatedAt"
     );
     if (!orderData) {
-      res.status(404).json({ message: "Order not found" });
-      return;
+      throw new HttpError("Order not found", 404);
     }
     const currentDeliveryStatus = orderData.deliveryStatus;
     const { updatedAt } = orderData;
     // To allow fixing status in case something goes wrong but with limits
     if (currentDeliveryStatus === "Delivered" && isMoreThanWeekOld(updatedAt)) {
-      res.status(400).json({ message: "Order already delivered" });
-      return;
+      throw new HttpError("Order delivered already", 400);
     }
     // update status
     orderData.deliveryStatus = deliveryStatus;
     await orderData.save();
 
     res.status(200).json({ message: "Delivery status successfully updated" });
-  } catch (error:any) {
+  } catch (error: any) {
     throw new HttpError(error.message, 500);
   }
 };

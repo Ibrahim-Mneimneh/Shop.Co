@@ -1,4 +1,4 @@
-import {  Response } from "express";
+import { Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import {
   getLowOnStockAgg,
@@ -10,11 +10,15 @@ import {
   getSalesAndProfit,
   getSalesGraph,
 } from "./aggregates";
-import { getDashboardSchema, getMostSoldProductsSchema, paginationSchema } from "../../../types/adminControllerTypes";
+import {
+  getDashboardSchema,
+  getMostSoldProductsSchema,
+  paginationSchema,
+} from "../../../types/adminControllerTypes";
 import { HttpError } from "../../../utils/customErrors";
 
-// Get Dashboad 
-// (Daily Order count) / (Total Sales & Profit with filters) / Most Sold products / monthly or yearly Sales Graph / Products that are out of stock / Most recent orders / Delivery pending orders 
+// Get Dashboad
+// (Daily Order count) / (Total Sales & Profit with filters) / Most Sold products / monthly or yearly Sales Graph / Products that are out of stock / Most recent orders / Delivery pending orders
 export const getDashboard = async (req: AuthRequest, res: Response) => {
   try {
     const { error, value } = getDashboardSchema.validate(req.query);
@@ -38,7 +42,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
     const recentOrders = await getMostRecentOrders(false, 0, 5);
     const salesGraph = await getSalesGraph(salesGraphFrequency);
     const pendingOrders = await getPendingOrdersAgg(false, 0, 5);
-    const onSale= await getOnSaleAgg(false,0,5)
+    const onSale = await getOnSaleAgg(false, 0, 5);
     const lowStock = await getLowOnStockAgg(false, 0, 5);
     // on sale & low on stock
     res.status(200).json({
@@ -51,10 +55,10 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
         salesGraph,
         pendingOrders,
         lowStock,
-        onSale
+        onSale,
       },
     });
-  } catch (error:any) {
+  } catch (error: any) {
     throw new HttpError(error.message, 500);
   }
 };
@@ -77,18 +81,16 @@ export const getMostSoldProducts = async (req: AuthRequest, res: Response) => {
       limit
     );
     if (!result || result.length === 0) {
-      res.status(404).json({ message: "No matching products found" });
-      return;
+      throw new HttpError("No matching products found", 404);
     }
     const totalCount = count[0].count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
+      throw new HttpError(
+        "Selected page number exceeds available totalPages: " + totalPages,
+        400
+      );
     }
     res.status(200).json({
       message: "Matching products found",
@@ -119,18 +121,16 @@ export const getRecentOrders = async (req: AuthRequest, res: Response) => {
       limit
     );
     if (!result || result.length === 0) {
-      res.status(404).json({ message: "No matching orders found" });
-      return;
+      throw new HttpError("No matching orders found", 404);
     }
     const totalCount = count[0].count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
+      throw new HttpError(
+        "Selected page number exceeds available totalPages: " + totalPages,
+        400
+      );
     }
     res.status(200).json({
       message: "Matching orders found",
@@ -162,18 +162,16 @@ export const getPendingOrders = async (req: AuthRequest, res: Response) => {
       limit
     );
     if (!result || result.length === 0) {
-      res.status(404).json({ message: "No matching orders found" });
-      return;
+      throw new HttpError("No matching orders found", 404);
     }
     const totalCount = count[0].count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
+      throw new HttpError(
+        "Selected page number exceeds available totalPages: " + totalPages,
+        400
+      );
     }
     res.status(200).json({
       message: "Matching orders found",
@@ -188,7 +186,7 @@ export const getPendingOrders = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getProductsOnSale = async (req: AuthRequest, res: Response)=>{
+export const getProductsOnSale = async (req: AuthRequest, res: Response) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
     throw new HttpError(
@@ -201,18 +199,16 @@ export const getProductsOnSale = async (req: AuthRequest, res: Response)=>{
   try {
     const { result, totalCount: count } = await getOnSaleAgg(true, skip, limit);
     if (!result || result.length === 0) {
-      res.status(404).json({ message: "No matching products found" });
-      return;
+      throw new HttpError("No matching products found", 404);
     }
     const totalCount = count[0].count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
+      throw new HttpError(
+        "Selected page number exceeds available totalPages: " + totalPages,
+        400
+      );
     }
     res.status(200).json({
       message: "Matching products found",
@@ -227,7 +223,10 @@ export const getProductsOnSale = async (req: AuthRequest, res: Response)=>{
   }
 };
 
-export const getProductsLowOnStock = async (req: AuthRequest, res: Response) => {
+export const getProductsLowOnStock = async (
+  req: AuthRequest,
+  res: Response
+) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
     throw new HttpError(
@@ -244,18 +243,16 @@ export const getProductsLowOnStock = async (req: AuthRequest, res: Response) => 
       limit
     );
     if (!result || result.length === 0) {
-      res.status(404).json({ message: "No matching products found" });
-      return;
+      throw new HttpError("No matching products found", 404);
     }
     const totalCount = count[0].count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
+      throw new HttpError(
+        "Selected page number exceeds available totalPages: " + totalPages,
+        400
+      );
     }
     res.status(200).json({
       message: "Matching products found",

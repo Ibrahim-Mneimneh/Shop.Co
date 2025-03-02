@@ -49,8 +49,7 @@ export const registerUser: RequestHandler = async (
     // Check if the email is used
     const usedEmail = await UserModel.findOne({ email: data.email });
     if (usedEmail) {
-      res.status(400).json({ message: "Email already in use" });
-      return;
+      throw new HttpError("Email already in use", 400);
     }
     // Hash password
     const salt = await bcrypt.genSalt(10);
@@ -83,17 +82,16 @@ export const loginUser: RequestHandler = async (
     // I need to require the data from the user
     const { error, value } = loginSchema.validate(req.body);
     if (error) {
-     throw new HttpError(
-       "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-       400
-     );
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
     }
 
     // check if the user is available
     const user = await UserModel.findOne({ email: value.email });
     if (!user) {
-      res.status(404).json({ message: "User not found" });
-      return;
+      throw new HttpError("User not found", 404);
     }
     // check if the user is verified
     if (!user.isVerified) {
@@ -102,25 +100,22 @@ export const loginUser: RequestHandler = async (
         new Date(user.verificationTokenExpiresAt) < new Date()
       ) {
         emailVerification(user, user.email, user.name.split(" ")[0]);
-        res.status(403).json({
-          message:
-            "Your verification token has expired. Please check your email for a new verification link.",
-        });
-        return;
+        throw new HttpError(
+          "Your verification token has expired. Please check your email for a new verification link.",
+          403
+        );
       } else {
-        res.status(403).json({
-          message:
-            "Your account is not verified. Please check your email to verify your account.",
-        });
-        return;
+        throw new HttpError(
+          "Your account is not verified. Please check your email to verify your account.",
+          400
+        );
       }
     }
     // get password unhash it and check if the password is true
     const match = await bcrypt.compare(value.password, user.password);
 
     if (!match) {
-      res.status(400).json({ message: "Incorrect email/password" });
-      return;
+      throw new HttpError("Incorrect email/password", 400);
     }
     // generate the user token (JWT)
     const token: string = jwtGenerator(
@@ -140,8 +135,7 @@ export const getUser = async (req: AuthRequest, res: Response) => {
     const userId = req.userId;
     const userData = await UserModel.findById(userId);
     if (!userData) {
-      res.status(404).json({ message: "User not found" });
-      return;
+      throw new HttpError("User not found", 404);
     }
     res.status(200).json({ message: "Successful", data: userData });
   } catch (error: any) {
@@ -159,12 +153,10 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
     // get the cart & verify its not empty
     const cartData = await CartModel.findById(cartId);
     if (!cartData) {
-      res.status(402).json({ message: "Cart not available" });
-      return;
+      throw new HttpError("Cart not available", 404);
     }
     if (cartData.products.length === 0) {
-      res.status(400).json({ message: "Cart is empty" });
-      return;
+      throw new HttpError("Cart is empty! Add elements to cart", 400);
     }
     const cartObj = cartData.toObject();
     // Allocate the items in the cart (check if available)
@@ -311,8 +303,7 @@ export const confirmPayment = async (req: DbSessionRequest, res: Response) => {
     // Change the paymentStatus to "Complete"
     const orderData = await OrderModel.findById(orderId);
     if (!orderData) {
-      res.status(404).json({ message: "Order not found" });
-      return;
+      throw new HttpError("Order not found", 404);
     }
     if (
       orderData.paymentStatus !== "Pending" ||
@@ -322,8 +313,7 @@ export const confirmPayment = async (req: DbSessionRequest, res: Response) => {
         orderData.paymentStatus !== "Pending"
           ? "Order payment already confirmed"
           : "Order not found";
-      res.status(404).json({ message });
-      return;
+      throw new HttpError(message, 404);
     }
     const updatedOrder = await OrderModel.findByIdAndUpdate(
       orderId,
@@ -331,8 +321,7 @@ export const confirmPayment = async (req: DbSessionRequest, res: Response) => {
       { session, new: true }
     );
     if (!updatedOrder) {
-      res.status(404).json({ message: "Order not found" });
-      return;
+      throw new HttpError("Order not found", 404);
     }
     // Add orderId to user
     const updatedUser = await UserModel.findByIdAndUpdate(
@@ -389,16 +378,13 @@ export const getOrders = async (req: AuthRequest, res: Response) => {
     const { page, limit } = value;
     const totalPages = Math.floor((orders.length - 1) / limit) + 1;
     if (orders.length === 0) {
-      res.status(404).json({
-        message: "No orders found!",
-      });
-      return;
+      throw new HttpError("No orders found", 404);
     }
     if (page > totalPages) {
-      res.status(400).json({
-        message: "Validation failed: requested page exceeds totalPages",
-      });
-      return;
+      throw new HttpError(
+        "Validation failed: requested page exceeds totalPages: " + totalPages,
+        400
+      );
     }
     const skip = (page - 1) * limit;
     const selectedOrders = orders.slice(skip, skip + limit).reverse();
@@ -440,8 +426,7 @@ export const getOrder = async (req: AuthRequest, res: Response) => {
       }
     );
     if (!orderData) {
-      res.status(404).json({ message: "Order not found" });
-      return;
+      throw new HttpError("Order not found", 404);
     }
     res
       .status(200)
@@ -471,8 +456,7 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
     // Get user's name
     const userData = await UserModel.findById(userId, "name");
     if (!userData) {
-      res.status(401).json({ message: "Unauthorized Access" }); // Change for later
-      return;
+      throw new HttpError("User not available", 404);
     }
     // Check variant, ensure its active
     const isActive = await ProductVariantModel.findOne(
@@ -484,8 +468,7 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
     );
 
     if (!isActive) {
-      res.status(404).json({ message: "Product not found" });
-      return;
+      throw new HttpError("Product not found", 404);
     }
     // Fetch the order ensure the variantId is included & the isRated is false
     const orderedProduct = await OrderModel.find({
@@ -506,13 +489,11 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
     });
 
     if (hasReviewed) {
-      res.status(404).json({ message: "Product already reviewed" });
-      return;
+      throw new HttpError("Product already reviewed", 400);
     }
     const ratingData = await RatingModel.findOne({ product }, "-reviews");
     if (!ratingData) {
-      res.status(404).json({ message: "Product review unavailable" });
-      return;
+      throw new HttpError("Product review unavailable", 404);
     }
     const { _id, rating: oldRating, totalReviews, __v } = ratingData;
     const newRating = (totalReviews * oldRating + rating) / (totalReviews + 1);
@@ -534,8 +515,7 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
       { new: true, projection: "-reviews" }
     );
     if (!updatedRating) {
-      res.status(400).json({ message: "Product review failed" });
-      return;
+      throw new HttpError("Product review failed", 400);
     }
     res.status(200).json({ message: "Review sent successfully" });
   } catch (error: any) {

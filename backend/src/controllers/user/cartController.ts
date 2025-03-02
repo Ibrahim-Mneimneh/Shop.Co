@@ -31,8 +31,7 @@ export const getCart: RequestHandler = async (
       })
       .select("-products.quantity._id -products._id");
     if (!cartData) {
-      res.status(404).json({ message: "Cart not found" });
-      return;
+      throw new HttpError("Cart not available", 404);
     }
     if (cartData.products.length === 0) {
       res.status(200).json({
@@ -80,8 +79,7 @@ export const addToCart: RequestHandler = async (
       const message: string = !variantData
         ? "Product not found"
         : "Requested size isn't available";
-      res.status(404).json({ message });
-      return;
+      throw new HttpError(message, 400);
     }
     const quantityLeft = variantData.quantity[0].quantityLeft;
 
@@ -94,16 +92,14 @@ export const addToCart: RequestHandler = async (
         requestedQuantity > quantityLeft
           ? "Product stock limit reached"
           : "Product currently unavailable or out of stock";
-      res.status(400).json({ message });
-      return;
+      throw new HttpError(message, 400);
     }
 
     const cartData = await CartModel.findById(cartId, {
       products: { $elemMatch: { variant: variantId } },
     });
     if (!cartData) {
-      res.status(402).json({ message: "Cart not found" });
-      return;
+      throw new HttpError("Cart not available", 404);
     }
 
     let sizeExists: boolean = false;
@@ -140,8 +136,7 @@ export const addToCart: RequestHandler = async (
           cartProductQuantity[sizeIndex].quantity + requestedQuantity >
           quantityLeft
         ) {
-          res.status(400).json({ message: "Product stock limit reached" });
-          return;
+          throw new HttpError("Product stock limit reached", 400);
         }
         updatedCart = await CartModel.findOneAndUpdate(
           {
@@ -170,8 +165,7 @@ export const addToCart: RequestHandler = async (
       }
     }
     if (!updatedCart) {
-      res.status(400).json({ message: "Failed to update cart" });
-      return;
+      throw new HttpError("Failed to update cart", 400);
     }
     const totalPrice = await updatedCart.getTotalPrice();
     res.status(200).json({
@@ -214,8 +208,7 @@ export const updateProductCartQuantity: RequestHandler = async (
       const message: string = !variantData
         ? "Product not found"
         : "Requested size isn't available";
-      res.status(404).json({ message });
-      return;
+      throw new HttpError(message, 404);
     }
     const quantityLeft = variantData.quantity[0].quantityLeft;
 
@@ -246,8 +239,7 @@ export const updateProductCartQuantity: RequestHandler = async (
       }
     );
     if (!cartData) {
-      res.status(404).json({ message: "Cart has no matching product." });
-      return;
+      throw new HttpError("Cart has no matching product", 404);
     }
     let sizeIndex: number = 0;
     const cartProductQuantity = cartData.products[0].quantity;
@@ -265,8 +257,7 @@ export const updateProductCartQuantity: RequestHandler = async (
 
       // if increments it exceeds quantity left
       if (operation === "increment" && quantityLeft < quantity + 1) {
-        res.status(400).json({ message: "Product stock limit reached" });
-        return;
+        throw new HttpError("Product stock limit reached", 400);
       }
 
       if (operation === "decrement" && quantity <= 1) {
@@ -287,8 +278,7 @@ export const updateProductCartQuantity: RequestHandler = async (
       );
 
       if (!updatedCart) {
-        res.status(404).json({ message: "Failed to update cart" });
-        return;
+        throw new HttpError("Failed to update cart", 404);
       }
       // calculate price
       const totalPrice = await updatedCart.getTotalPrice();
@@ -337,8 +327,7 @@ export const deleteCartProduct: RequestHandler = async (
       }
     );
     if (!cartData) {
-      res.status(404).json({ message: "Cart has no matching product." });
-      return;
+      throw new HttpError("Cart has no matching product", 404);
     }
     const productQuantity = cartData.products[0].quantity;
     let updatedCart: ICart | null = null;
@@ -357,8 +346,7 @@ export const deleteCartProduct: RequestHandler = async (
       );
     }
     if (!updatedCart) {
-      res.status(404).json({ message: "Failed to remove product" });
-      return;
+      throw new HttpError("Failed to remove product", 400);
     }
     const totalPrice = await updatedCart.getTotalPrice();
     res.status(200).json({

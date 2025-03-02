@@ -1,12 +1,10 @@
-import { query, Request, RequestHandler, Response } from "express";
-import { IObjectId } from "../../types/modalTypes";
-import mongoose, { PipelineStage, Types } from "mongoose";
+import { Request, RequestHandler, Response } from "express";
+import { PipelineStage } from "mongoose";
 
 import { ProductModel } from "../../models/product/productModel";
 import { ProductImageModel } from "../../models/product/productImageModel";
 import {
   filterProductsSchema,
-  productIdSchema,
   variantIdSchema,
 } from "../../types/publicControllerTypes";
 import { ProductVariantModel } from "../../models/product/productVariantModel";

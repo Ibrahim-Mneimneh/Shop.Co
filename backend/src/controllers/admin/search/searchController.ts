@@ -22,18 +22,16 @@ export const orderSearch = async (req: AuthRequest, res: Response) => {
   try {
     const { result, totalCount: count } = await searchOrderAgg(value, skip);
     if (!result || result.length === 0) {
-      res.status(404).json({ message: "No matching orders found" });
-      return;
+      throw new HttpError("No matching orders found", 404);
     }
     const totalCount = count.count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
+      throw new HttpError(
+        "Selected page number exceeds available totalPages: " + totalPages,
+        400
+      );
     }
     res.status(200).json({
       message: "Matching orders found",
@@ -43,9 +41,9 @@ export const orderSearch = async (req: AuthRequest, res: Response) => {
         orders: result,
       },
     });
-  } catch (error:any) {
-      throw new HttpError(error.message, 500);
-    }
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
+  }
 };
 
 // Write product search
@@ -70,18 +68,16 @@ export const productSearch = async (req: AuthRequest, res: Response) => {
   try {
     const { result, totalCount: count } = await searchProductAgg(value, skip);
     if (!result || result.length === 0) {
-      res.status(404).json({ message: "No matching products found" });
-      return;
+      throw new HttpError("No matching products found", 404);
     }
     const totalCount = count.count;
     const totalPages: number =
       totalCount <= limit ? 1 : Math.ceil(totalCount / limit);
     if (page > totalPages) {
-      res.status(400).json({
-        message:
-          "Selected page number exceeds available totalPages: " + totalPages,
-      });
-      return;
+      throw new HttpError(
+        "Selected page number exceeds available totalPages: " + totalPages,
+        400
+      );
     }
     res.status(200).json({
       message: "Matching products found",
