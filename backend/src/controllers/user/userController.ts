@@ -18,6 +18,7 @@ import {
   orderIdSchema,
   registerSchema,
   reviewProductSchema,
+  updateProductReviewSchema,
 } from "../../types/userControllerTypes";
 import { jwtGenerator } from "../../utils/jwtGenerator";
 import { RatingModel } from "../../models/product/ratingModel";
@@ -523,6 +524,52 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const updateProductReview = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req;
+    const { error, value } = updateProductReviewSchema.validate({
+      variantId: req.params.variantId,
+      reviewId: req.params.reviewId,
+      review: req.body.review,
+      rating: req.body.rating,
+    });
+    if (error) {
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
+    }
+    const { variantId, reviewId, review, rating } = value;
+    const variantData = await ProductVariantModel.findById(
+      variantId,
+      "product"
+    );
+    if (!variantData) {
+      throw new HttpError("Product not found", 404);
+    }
+    const ratingData = await RatingModel.exists({
+      product: variantData.product,
+      reviews: { $elemMatch: { user: userId, _id: reviewId } },
+    });
+    if (!ratingData) {
+      throw new HttpError("Review not found", 404);
+    }
+    // recalculate the average rating
+    // update the ref from the product variant *** or remove the attribute directly
+    // update review
+    const updatedRating = await RatingModel.findOneAndUpdate(
+      {
+        product: variantData.product,
+        "reviews._id": reviewId,
+      },
+      { $set: { "reviews.$.rating": rating, "reviews.$.review": review } },
+      { new: true }
+    );
+    res.status(200).json({});
+  } catch (error: any) {
+    throw new HttpError(error.message, 500);
+  }
+};
 // ? Contact Support
 
 // ? Send complain or return request

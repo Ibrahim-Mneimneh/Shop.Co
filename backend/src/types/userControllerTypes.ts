@@ -81,3 +81,10 @@ export const reviewProductSchema= Joi.object({
   review:Joi.string().min(1).max(100),
   rating:Joi.number().min(1).max(5)
 })
+
+export const updateProductReviewSchema = Joi.object({
+  variantId:validIdSchema,
+  reviewId:validIdSchema, 
+  review: Joi.string().min(1).max(100),
+  rating: Joi.number().min(1).max(5),
+});
