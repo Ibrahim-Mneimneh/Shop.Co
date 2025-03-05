@@ -22,7 +22,7 @@ import {
 } from "../../types/userControllerTypes";
 import { jwtGenerator } from "../../utils/jwtGenerator";
 import { RatingModel } from "../../models/product/ratingModel";
-import { IProduct } from "../../models/product/productModel";
+import { IProduct, ProductModel } from "../../models/product/productModel";
 import { HttpError } from "../../utils/customErrors";
 
 export const registerUser: RequestHandler = async (
@@ -524,8 +524,12 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const updateProductReview = async (req: AuthRequest, res: Response) => {
+export const updateProductReview = async (
+  req: DbSessionRequest,
+  res: Response
+) => {
   try {
+    const session = req.dbSession;
     const { userId } = req;
     const { error, value } = updateProductReviewSchema.validate({
       variantId: req.params.variantId,
@@ -567,10 +571,23 @@ export const updateProductReview = async (req: AuthRequest, res: Response) => {
           rating: { $divide: [{ $add: ["$rating", rating] }, "$totalReviews"] },
         },
       },
-      { projection: { _id: 1 } }
+      { projection: { _id: 1, rating: 1, totalReviews: 1 }, session }
     );
     if (!updatedRating) {
-      throw new HttpError("Failed to update review", 404);
+      throw new HttpError("Failed to update review", 400);
+    }
+    const updateVariant = await ProductModel.updateOne(
+      {
+        _id: variantData.product,
+        status: "Active",
+      },
+      { rating: updatedRating.rating, totalReviews: updatedRating.totalReviews }
+    );
+    if (updateVariant.modifiedCount === 0) {
+      throw new HttpError(
+        "Failed to update review. Product is in-active at the time",
+        400
+      );
     }
     res.status(200).json({ message: "Review updated sucessfully" });
   } catch (error: any) {
