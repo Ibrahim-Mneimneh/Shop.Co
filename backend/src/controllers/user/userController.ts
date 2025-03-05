@@ -554,18 +554,25 @@ export const updateProductReview = async (req: AuthRequest, res: Response) => {
     if (!ratingData) {
       throw new HttpError("Review not found", 404);
     }
-    // recalculate the average rating
-    // update the ref from the product variant *** or remove the attribute directly
     // update review
     const updatedRating = await RatingModel.findOneAndUpdate(
       {
         product: variantData.product,
         "reviews._id": reviewId,
       },
-      { $set: { "reviews.$.rating": rating, "reviews.$.review": review } },
-      { new: true }
+      {
+        $set: {
+          "reviews.$.rating": rating,
+          "reviews.$.review": review,
+          rating: { $divide: [{ $add: ["$rating", rating] }, "$totalReviews"] },
+        },
+      },
+      { projection: { _id: 1 } }
     );
-    res.status(200).json({});
+    if (!updatedRating) {
+      throw new HttpError("Failed to update review", 404);
+    }
+    res.status(200).json({ message: "Review updated sucessfully" });
   } catch (error: any) {
     throw new HttpError(error.message, 500);
   }
