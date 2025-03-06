@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { NextFunction, Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import {
   adminFilterOrdersSchema,
@@ -8,7 +8,11 @@ import { searchOrderAgg, searchProductAgg } from "./aggregates";
 import { HttpError } from "../../../utils/customErrors";
 
 // Write search orders
-export const orderSearch = async (req: AuthRequest, res: Response) => {
+export const orderSearch = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const query = req.query;
   const { value, error } = adminFilterOrdersSchema.validate(query);
   if (error) {
@@ -42,12 +46,19 @@ export const orderSearch = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 // Write product search
-export const productSearch = async (req: AuthRequest, res: Response) => {
+export const productSearch = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const query = req.query;
   const sizeQuery = req.query.size;
   req.query.size =
@@ -88,6 +99,9 @@ export const productSearch = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };

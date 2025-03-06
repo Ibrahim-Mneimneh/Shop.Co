@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { NextFunction, Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import {
   getLowOnStockAgg,
@@ -19,7 +19,11 @@ import { HttpError } from "../../../utils/customErrors";
 
 // Get Dashboad
 // (Daily Order count) / (Total Sales & Profit with filters) / Most Sold products / monthly or yearly Sales Graph / Products that are out of stock / Most recent orders / Delivery pending orders
-export const getDashboard = async (req: AuthRequest, res: Response) => {
+export const getDashboard = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { error, value } = getDashboardSchema.validate(req.query);
     if (error) {
@@ -59,11 +63,18 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
-export const getMostSoldProducts = async (req: AuthRequest, res: Response) => {
+export const getMostSoldProducts = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const { error, value } = getMostSoldProductsSchema.validate(req.query);
   if (error) {
     throw new HttpError(
@@ -101,10 +112,17 @@ export const getMostSoldProducts = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
-export const getRecentOrders = async (req: AuthRequest, res: Response) => {
+export const getRecentOrders = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
     throw new HttpError(
@@ -141,11 +159,18 @@ export const getRecentOrders = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
-export const getPendingOrders = async (req: AuthRequest, res: Response) => {
+export const getPendingOrders = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
     throw new HttpError(
@@ -182,11 +207,18 @@ export const getPendingOrders = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
-export const getProductsOnSale = async (req: AuthRequest, res: Response) => {
+export const getProductsOnSale = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
     throw new HttpError(
@@ -219,13 +251,17 @@ export const getProductsOnSale = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 export const getProductsLowOnStock = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   const { error, value } = paginationSchema.validate(req.query);
   if (error) {
@@ -263,6 +299,9 @@ export const getProductsLowOnStock = async (
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };

@@ -1,4 +1,4 @@
-import { Request, RequestHandler, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import { PipelineStage } from "mongoose";
 
 import { ProductModel } from "../../models/product/productModel";
@@ -12,7 +12,11 @@ import { RatingModel } from "../../models/product/ratingModel";
 import { HttpError } from "../../utils/customErrors";
 import { validIdSchema } from "../../types/productTypes";
 
-export const getImage: RequestHandler = async (req: Request, res: Response) => {
+export const getImage: RequestHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { error, value } = validIdSchema.validate(req.params.imageId);
     if (error) {
@@ -29,11 +33,18 @@ export const getImage: RequestHandler = async (req: Request, res: Response) => {
     const imageBuffer = Buffer.from(image.image, "base64");
     res.send(imageBuffer);
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
-export const getVariant = async (req: Request, res: Response) => {
+export const getVariant = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     // get id from params
     const { error, value } = variantIdSchema.validate({
@@ -88,12 +99,19 @@ export const getVariant = async (req: Request, res: Response) => {
       data: { ...filteredProductData, ...filteredVariantData, reviews },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 // View products (with filters)
-export const getFilteredProducts = async (req: Request, res: Response) => {
+export const getFilteredProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const query = req.query;
     const sizeQuery = req.query.size;
@@ -328,6 +346,9 @@ export const getFilteredProducts = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };

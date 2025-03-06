@@ -1,4 +1,4 @@
-import { Request, RequestHandler, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import { DbSessionRequest } from "../../../middleware/sessionMiddleware";
 import {
   updateVariantSaleSchema,
@@ -18,7 +18,8 @@ import { HttpError } from "../../../utils/customErrors";
 // Update or Add a Sale
 export const updateVariantSale = async (
   req: DbSessionRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const data: {
@@ -170,6 +171,9 @@ export const updateVariantSale = async (
       return;
     }
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
@@ -177,7 +181,8 @@ export const updateVariantSale = async (
 // delete Variant Sale
 export const deleteVariantSale = async (
   req: DbSessionRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const session = req.dbSession;
@@ -247,6 +252,9 @@ export const deleteVariantSale = async (
       .status(200)
       .json({ message: "Sale removed successfully", data: updatedVrainat });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };

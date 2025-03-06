@@ -1,4 +1,4 @@
-import { Request, RequestHandler, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import {
   addProductSchema,
@@ -28,7 +28,8 @@ import { HttpError } from "../../../utils/customErrors";
 // Upload Product Images
 export const addProductImage: RequestHandler = async (
   req: DbSessionRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const { base64Images }: { base64Images: string[] } = req.body;
@@ -85,6 +86,9 @@ export const addProductImage: RequestHandler = async (
       .status(200)
       .json({ message: "Images added successfully", data: { imageIds } });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
@@ -92,7 +96,8 @@ export const addProductImage: RequestHandler = async (
 // Add a product
 export const addProduct: RequestHandler = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     // validate productDetails
@@ -117,6 +122,9 @@ export const addProduct: RequestHandler = async (
       .status(200)
       .json({ message: "Product added successfully", data: product });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
@@ -124,7 +132,8 @@ export const addProduct: RequestHandler = async (
 // Add product variants (starting)
 export const addProductVariant = async (
   req: DbSessionRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     // validate productDetails
@@ -188,12 +197,19 @@ export const addProductVariant = async (
     await RatingModel.create({ product: productId });
     res.status(200).json({ message: "Product variants added successfully" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 // Update Variant stock (Add items) {size, quantity}
-export const restockProduct = async (req: DbSessionRequest, res: Response) => {
+export const restockProduct = async (
+  req: DbSessionRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     // validate productDetails
     const { error, value } = updateQuantitySchema.validate({
@@ -239,12 +255,19 @@ export const restockProduct = async (req: DbSessionRequest, res: Response) => {
     }
     res.status(200).json({ message: "Product successfully restocked" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 // Delete a product with reset stock option
-export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
+export const deleteProduct = async (
+  req: DbSessionRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { error, value } = deleteProductQuerySchema.validate({
       Id: req.params.productId,
@@ -285,6 +308,9 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
     }
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
@@ -292,7 +318,8 @@ export const deleteProduct = async (req: DbSessionRequest, res: Response) => {
 // Delete a variant with reset stock option
 export const deleteProductVariant = async (
   req: DbSessionRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const { error, value } = deleteProductQuerySchema.validate({
@@ -322,13 +349,17 @@ export const deleteProductVariant = async (
     }
     res.status(200).json({ message: "Product variant successfully" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 export const reActivateProduct = async (
   req: DbSessionRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const { error, value } = reActivateProductSchema.validate({
@@ -383,6 +414,9 @@ export const reActivateProduct = async (
     }
     res.status(200).json({ message: "Product activated successfully" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };

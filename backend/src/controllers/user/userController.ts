@@ -1,6 +1,5 @@
-import { Request, Response, RequestHandler } from "express";
+import { Request, Response, RequestHandler, NextFunction } from "express";
 import bcrypt from "bcryptjs";
-import clc from "cli-color";
 
 import { UserModel } from "../../models/userModel";
 import { emailVerification } from "./verification/emailSender";
@@ -22,12 +21,13 @@ import {
 } from "../../types/userControllerTypes";
 import { jwtGenerator } from "../../utils/jwtGenerator";
 import { RatingModel } from "../../models/product/ratingModel";
-import { IProduct, ProductModel } from "../../models/product/productModel";
+import { ProductModel } from "../../models/product/productModel";
 import { HttpError } from "../../utils/customErrors";
 
 export const registerUser: RequestHandler = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const { error, value } = registerSchema.validate(req.body);
@@ -71,13 +71,17 @@ export const registerUser: RequestHandler = async (
     // send the data back with the token
     res.status(201).json({ message: "User registered Successfully" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 export const loginUser: RequestHandler = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     // I need to require the data from the user
@@ -127,11 +131,18 @@ export const loginUser: RequestHandler = async (
 
     res.status(200).json({ message: "Login Successful", data: user, token });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
-export const getUser = async (req: AuthRequest, res: Response) => {
+export const getUser = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const userId = req.userId;
     const userData = await UserModel.findById(userId);
@@ -140,12 +151,19 @@ export const getUser = async (req: AuthRequest, res: Response) => {
     }
     res.status(200).json({ message: "Successful", data: userData });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 // Make an order
-export const orderProduct = async (req: DbSessionRequest, res: Response) => {
+export const orderProduct = async (
+  req: DbSessionRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const paymentTimeout: number = 8 * 60 * 1000; // 5 mins
     const cartId = req.cartId;
@@ -283,12 +301,19 @@ export const orderProduct = async (req: DbSessionRequest, res: Response) => {
       }
     }, paymentTimeout);
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 // Payment request (for testing purpose for now, later use stripe)
-export const confirmPayment = async (req: DbSessionRequest, res: Response) => {
+export const confirmPayment = async (
+  req: DbSessionRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const userId = req.userId as IObjectId;
     const session = req.dbSession;
@@ -356,12 +381,19 @@ export const confirmPayment = async (req: DbSessionRequest, res: Response) => {
     }
     res.status(200).json({ message: "Order payment succeeded" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 // Get orders (with pagination)
-export const getOrders = async (req: AuthRequest, res: Response) => {
+export const getOrders = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const userId = req.userId;
     const { error, value } = getOrdersSchema.validate(req.query);
@@ -400,11 +432,18 @@ export const getOrders = async (req: AuthRequest, res: Response) => {
       data: { orders: ordersData, page, totalPages },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 // Get order
-export const getOrder = async (req: AuthRequest, res: Response) => {
+export const getOrder = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { userId } = req;
     const { error, value } = orderIdSchema.validate(req.params);
@@ -433,11 +472,18 @@ export const getOrder = async (req: AuthRequest, res: Response) => {
       .status(200)
       .json({ message: "Order loaded successfully", data: orderData });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 // Rate a product (after purchase)
-export const reviewProduct = async (req: AuthRequest, res: Response) => {
+export const reviewProduct = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     // get the userId from token / orderId & variantId / rating through the body
     const { userId } = req;
@@ -520,13 +566,17 @@ export const reviewProduct = async (req: AuthRequest, res: Response) => {
     }
     res.status(200).json({ message: "Review sent successfully" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 export const updateProductReview = async (
   req: DbSessionRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const session = req.dbSession;
@@ -544,6 +594,7 @@ export const updateProductReview = async (
       );
     }
     const { variantId, reviewId, review, rating } = value;
+    console.log(value)
     const variantData = await ProductVariantModel.findById(
       variantId,
       "product"
@@ -551,10 +602,10 @@ export const updateProductReview = async (
     if (!variantData) {
       throw new HttpError("Product not found", 404);
     }
-    const ratingData = await RatingModel.exists({
+    const ratingData = await RatingModel.findOne({
       product: variantData.product,
       reviews: { $elemMatch: { user: userId, _id: reviewId } },
-    });
+    },"__v rating totalReviews");
     if (!ratingData) {
       throw new HttpError("Review not found", 404);
     }
@@ -568,7 +619,7 @@ export const updateProductReview = async (
         $set: {
           "reviews.$.rating": rating,
           "reviews.$.review": review,
-          rating: { $divide: [{ $add: ["$rating", rating] }, "$totalReviews"] },
+          rating: { $divide: [{ $sum: ["$rating", rating] }, "$totalReviews"] },
         },
       },
       { projection: { _id: 1, rating: 1, totalReviews: 1 }, session }
@@ -591,9 +642,13 @@ export const updateProductReview = async (
     }
     res.status(200).json({ message: "Review updated sucessfully" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
+
 // ? Contact Support
 
 // ? Send complain or return request

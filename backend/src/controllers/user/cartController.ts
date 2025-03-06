@@ -1,4 +1,4 @@
-import { Response, RequestHandler } from "express";
+import { Response, RequestHandler, NextFunction } from "express";
 
 import { AuthRequest } from "../../middleware/authMiddleware";
 import { CartModel, ICart } from "../../models/cartModel";
@@ -17,7 +17,8 @@ import { HttpError } from "../../utils/customErrors";
 // get Cart
 export const getCart: RequestHandler = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const cartData: ICart | null = await CartModel.findById(req.cartId)
@@ -48,6 +49,9 @@ export const getCart: RequestHandler = async (
       data: { products: cartData.products, totalPrice },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
@@ -55,7 +59,8 @@ export const getCart: RequestHandler = async (
 // Add item to cart
 export const addToCart: RequestHandler = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const cartId = req.cartId;
@@ -173,6 +178,9 @@ export const addToCart: RequestHandler = async (
       data: { products: updatedCart.products, totalPrice },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
@@ -180,7 +188,8 @@ export const addToCart: RequestHandler = async (
 // Update existing items (increase/decrease quantity)
 export const updateProductCartQuantity: RequestHandler = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     // {operation nd size, productId from params}
@@ -288,13 +297,17 @@ export const updateProductCartQuantity: RequestHandler = async (
       });
     }
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 export const deleteCartProduct: RequestHandler = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const { error, value } = deleteCartProductSchema.validate({
@@ -354,6 +367,9 @@ export const deleteCartProduct: RequestHandler = async (
       data: { products: updatedCart.products, totalPrice },
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };

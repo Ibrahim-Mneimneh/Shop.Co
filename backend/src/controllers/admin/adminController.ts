@@ -1,4 +1,4 @@
-import { Request, RequestHandler, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import bcrypt from "bcryptjs";
 
 import { UserModel } from "../../models/userModel";
@@ -17,7 +17,8 @@ import { HttpError } from "../../utils/customErrors";
 // Admin login
 export const adminLogin: RequestHandler = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const { error, value } = loginSchema.validate(req.body);
@@ -49,12 +50,19 @@ export const adminLogin: RequestHandler = async (
 
     res.status(200).json({ message: "Login Successful", data: user, token });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
 
 // View product & its variants
-export const getProduct = async (req: Request, res: Response) => {
+export const getProduct = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     // get id from params
     const { error, value } = productIdSchema.validate({
@@ -82,10 +90,17 @@ export const getProduct = async (req: Request, res: Response) => {
     }
     throw new HttpError(productDetails.errorMessage, 400);
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
-export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
+export const updateDeliveryStatus = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { error, value } = updateDeliveryStatusSchema.validate({
       orderId: req.params.orderId,
@@ -117,6 +132,9 @@ export const updateDeliveryStatus = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({ message: "Delivery status successfully updated" });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return next(error);
+    }
     throw new HttpError(error.message, 500);
   }
 };
