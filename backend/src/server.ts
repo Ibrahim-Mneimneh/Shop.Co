@@ -58,11 +58,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // Global Error Middleware
-app.use((err: HttpError, req: Request, res: Response, next: NextFunction) => {
+app.use((err: HttpError | Error, req: Request, res: Response, next: NextFunction) => {
   // Get the statusCode, name & message
-  const statusCode = err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-
+  let statusCode = 500;
+  let message = "Internal Server Error";
+  if (err instanceof HttpError) {
+    statusCode= err.statusCode
+    message= err.message
+  }else{
+    message= err.message
+  }
   // Display Server errors only
   if (statusCode >= 500) {
     console.error(`${clc.red("Server Error")}: ${message}`);
