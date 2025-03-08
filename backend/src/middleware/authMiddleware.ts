@@ -73,14 +73,14 @@ export const authMiddleware = async (
     next();
   } catch (error: any) {
     if (error instanceof jwt.JsonWebTokenError) {
-      throw new HttpError("UnAuthorized Access - Invalid token", 401);
+      return next( new HttpError("UnAuthorized Access - Invalid token", 401));
     }
 
     if (error instanceof jwt.TokenExpiredError) {
-      throw new HttpError("UnAuthorized Access - Invalid token", 401);
+      return next(new HttpError("UnAuthorized Access - Token expired", 401));
     }
 
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -127,12 +127,12 @@ export const adminAuthMiddleware = async (
     next();
   } catch (error: any) {
     if (error instanceof jwt.JsonWebTokenError) {
-      throw new HttpError("UnAuthorized Access - Invalid token", 401);
+      return next(new HttpError("UnAuthorized Access - Invalid token", 401));
     }
 
     if (error instanceof jwt.TokenExpiredError) {
-      throw new HttpError("UnAuthorized Access - Token expired", 401);
+      return next(new HttpError("UnAuthorized Access - Token expired", 401));
     }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
