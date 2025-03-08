@@ -594,7 +594,7 @@ export const updateProductReview = async (
       );
     }
     const { variantId, reviewId, review, rating } = value;
-    console.log(value)
+    console.log(value);
     const variantData = await ProductVariantModel.findById(
       variantId,
       "product"
@@ -605,24 +605,34 @@ export const updateProductReview = async (
     const ratingData = await RatingModel.findOne({
       product: variantData.product,
       reviews: { $elemMatch: { user: userId, _id: reviewId } },
-    },"__v rating totalReviews");
+    }).select({
+      __v: 1,
+      rating: 1,
+      totalReviews: 1,
+      reviews: { $elemMatch: { user: userId } },
+    });
     if (!ratingData) {
       throw new HttpError("Review not found", 404);
     }
+    const { reviews, __v, totalReviews, rating: oldAverRating } = ratingData;
+    const oldRating = reviews[0].rating;
+    const newRating =
+      (oldAverRating * totalReviews - oldRating + rating) / totalReviews;
     // update review
     const updatedRating = await RatingModel.findOneAndUpdate(
       {
         product: variantData.product,
         "reviews._id": reviewId,
+        __v
       },
       {
         $set: {
           "reviews.$.rating": rating,
           "reviews.$.review": review,
-          rating: { $divide: [{ $sum: ["$rating", rating] }, "$totalReviews"] },
+          rating: newRating,
         },
       },
-      { projection: { _id: 1, rating: 1, totalReviews: 1 }, session }
+      { new:true,projection: { _id: 1, rating: 1, totalReviews: 1 }, session }
     );
     if (!updatedRating) {
       throw new HttpError("Failed to update review", 400);
