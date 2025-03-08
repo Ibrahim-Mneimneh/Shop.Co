@@ -86,10 +86,7 @@ export const addProductImage: RequestHandler = async (
       .status(200)
       .json({ message: "Images added successfully", data: { imageIds } });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -122,10 +119,7 @@ export const addProduct: RequestHandler = async (
       .status(200)
       .json({ message: "Product added successfully", data: product });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -197,10 +191,7 @@ export const addProductVariant = async (
     await RatingModel.create({ product: productId });
     res.status(200).json({ message: "Product variants added successfully" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -255,10 +246,7 @@ export const restockProduct = async (
     }
     res.status(200).json({ message: "Product successfully restocked" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -308,10 +296,7 @@ export const deleteProduct = async (
     }
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -349,10 +334,7 @@ export const deleteProductVariant = async (
     }
     res.status(200).json({ message: "Product variant successfully" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -414,9 +396,6 @@ export const reActivateProduct = async (
     }
     res.status(200).json({ message: "Product activated successfully" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };

@@ -63,10 +63,7 @@ export const getDashboard = async (
       },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -112,10 +109,7 @@ export const getMostSoldProducts = async (
       },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 export const getRecentOrders = async (
@@ -159,10 +153,7 @@ export const getRecentOrders = async (
       },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -207,10 +198,7 @@ export const getPendingOrders = async (
       },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -251,10 +239,7 @@ export const getProductsOnSale = async (
       },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -299,9 +284,6 @@ export const getProductsLowOnStock = async (
       },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };

@@ -50,10 +50,7 @@ export const adminLogin: RequestHandler = async (
 
     res.status(200).json({ message: "Login Successful", data: user, token });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -90,10 +87,7 @@ export const getProduct = async (
     }
     throw new HttpError(productDetails.errorMessage, 400);
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 export const updateDeliveryStatus = async (
@@ -132,9 +126,6 @@ export const updateDeliveryStatus = async (
 
     res.status(200).json({ message: "Delivery status successfully updated" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };

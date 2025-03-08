@@ -171,10 +171,7 @@ export const updateVariantSale = async (
       return;
     }
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -252,9 +249,6 @@ export const deleteVariantSale = async (
       .status(200)
       .json({ message: "Sale removed successfully", data: updatedVrainat });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };

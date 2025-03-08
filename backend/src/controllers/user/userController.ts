@@ -12,6 +12,7 @@ import { ProductVariantModel } from "../../models/product/productVariantModel";
 import { OrderModel } from "../../models/orderModel";
 import mongoose from "mongoose";
 import {
+  deleteProductReviewSchema,
   getOrdersSchema,
   loginSchema,
   orderIdSchema,
@@ -71,10 +72,7 @@ export const registerUser: RequestHandler = async (
     // send the data back with the token
     res.status(201).json({ message: "User registered Successfully" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -131,10 +129,7 @@ export const loginUser: RequestHandler = async (
 
     res.status(200).json({ message: "Login Successful", data: user, token });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -151,10 +146,7 @@ export const getUser = async (
     }
     res.status(200).json({ message: "Successful", data: userData });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -301,10 +293,7 @@ export const orderProduct = async (
       }
     }, paymentTimeout);
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -381,10 +370,7 @@ export const confirmPayment = async (
     }
     res.status(200).json({ message: "Order payment succeeded" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -432,10 +418,7 @@ export const getOrders = async (
       data: { orders: ordersData, page, totalPages },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 // Get order
@@ -472,10 +455,7 @@ export const getOrder = async (
       .status(200)
       .json({ message: "Order loaded successfully", data: orderData });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 // Rate a product (after purchase)
@@ -566,10 +546,7 @@ export const reviewProduct = async (
     }
     res.status(200).json({ message: "Review sent successfully" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -594,9 +571,8 @@ export const updateProductReview = async (
       );
     }
     const { variantId, reviewId, review, rating } = value;
-    console.log(value);
-    const variantData = await ProductVariantModel.findById(
-      variantId,
+    const variantData = await ProductVariantModel.findOne(
+      { _id: variantId, status: "Active" },
       "product"
     );
     if (!variantData) {
@@ -623,7 +599,7 @@ export const updateProductReview = async (
       {
         product: variantData.product,
         "reviews._id": reviewId,
-        __v
+        __v,
       },
       {
         $set: {
@@ -632,7 +608,7 @@ export const updateProductReview = async (
           rating: newRating,
         },
       },
-      { new:true,projection: { _id: 1, rating: 1, totalReviews: 1 }, session }
+      { new: true, projection: { _id: 1, rating: 1, totalReviews: 1 }, session }
     );
     if (!updatedRating) {
       throw new HttpError("Failed to update review", 400);
@@ -652,12 +628,10 @@ export const updateProductReview = async (
     }
     res.status(200).json({ message: "Review updated sucessfully" });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
+
 
 // ? Contact Support
 

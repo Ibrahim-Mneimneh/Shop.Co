@@ -33,10 +33,7 @@ export const getImage: RequestHandler = async (
     const imageBuffer = Buffer.from(image.image, "base64");
     res.send(imageBuffer);
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -99,10 +96,7 @@ export const getVariant = async (
       data: { ...filteredProductData, ...filteredVariantData, reviews },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -346,9 +340,6 @@ export const getFilteredProducts = async (
       },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };

@@ -49,10 +49,7 @@ export const getCart: RequestHandler = async (
       data: { products: cartData.products, totalPrice },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -178,10 +175,7 @@ export const addToCart: RequestHandler = async (
       data: { products: updatedCart.products, totalPrice },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -297,10 +291,7 @@ export const updateProductCartQuantity: RequestHandler = async (
       });
     }
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
 
@@ -367,9 +358,6 @@ export const deleteCartProduct: RequestHandler = async (
       data: { products: updatedCart.products, totalPrice },
     });
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return next(error);
-    }
-    throw new HttpError(error.message, 500);
+    return next(error);
   }
 };
