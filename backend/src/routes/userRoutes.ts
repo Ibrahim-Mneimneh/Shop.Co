@@ -7,14 +7,15 @@ import {
   loginUser,
   orderProduct,
   registerUser,
-} from "../controllers/userController";
+} from "../controllers/user/userController";
 import { authMiddleware } from "../middleware/authMiddleware";
 import {
   addToCart,
   deleteCartProduct,
   getCart,
   updateProductCartQuantity,
-} from "../controllers/cartController";
+} from "../controllers/user/cartController";
+import { deleteProductReview, reviewProduct, updateProductReview } from "../controllers/user/ratingController";
 
 const router: Router = express.Router();
 
@@ -25,27 +26,25 @@ router.post("/login", loginUser);
 // Authentication
 router.use("/", authMiddleware);
 
-// Get profile
+// Profile
 router.get("/", getUser);
-// Update profile (not finished)
-router.put("/");
-// Get cart
-router.get("/cart", getCart);
-// Add Product to Cart
-router.post("/cart", addToCart);
-// Update product quantity in the cart
-router.patch("/cart/products/:variantId", updateProductCartQuantity);
-// delete product (size or fully) from the cart
-router.delete("/cart/products/:variantId", deleteCartProduct);
-// Make an order
-router.post("/cart/order",orderProduct);
-// Confirm Payment (for testing now)
-router.post("/orders/payment",confirmPayment)
-// View users' orders
-router.get("/orders",getOrders);
-// View users' order
-router.get("/orders/:orderId",getOrder);
 
+// Cart 
+router.get("/cart", getCart);
+router.post("/cart", addToCart);
+router.patch("/cart/products/:variantId", updateProductCartQuantity);
+router.delete("/cart/products/:variantId", deleteCartProduct);
+
+// Order
+router.get("/orders", getOrders);
+router.get("/orders/:orderId", getOrder);
+router.post("/cart/order", orderProduct); 
+router.post("/orders/payment", confirmPayment); // Confirm Payment (for testing now)
+
+// Product Review
+router.post("/variants/:variantId/orders/:orderId",reviewProduct)
+router.patch("/variants/:variantId/reviews/:reviewId",updateProductReview)
+router.delete("/variants/:variantId/reviews/:reviewId", deleteProductReview);
 export const userRouter: Router = router;
 
 /**
@@ -154,7 +153,7 @@ export const userRouter: Router = router;
  *       - User
  *     summary: Get User Profile
  *     security:
- *       - BearerAuth: [] 
+ *       - BearerAuth: []
  *     description: Returns the profile information of the logged-in user.
  *     responses:
  *       200:
@@ -272,7 +271,6 @@ export const userRouter: Router = router;
  *       404:
  *         description: Cart not found
  */
-
 
 /**
  * @openapi
