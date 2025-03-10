@@ -78,13 +78,17 @@ export const getOrdersSchema = Joi.object({
 export const reviewProductSchema= Joi.object({
   variantId:validIdSchema,
   orderId:validIdSchema,
-  review:Joi.string().min(1).max(100),
-  rating:Joi.number().min(1).max(5)
+  review:Joi.string().min(1).max(100).required(),
+  rating:Joi.number().min(1).max(5).required()
 })
 
-export const updateProductReviewSchema = Joi.object({
-  variantId:validIdSchema,
-  reviewId:validIdSchema, 
-  review: Joi.string().min(1).max(100),
-  rating: Joi.number().min(1).max(5),
+export const deleteProductReviewSchema = Joi.object({
+  variantId: validIdSchema,
+  reviewId: validIdSchema,
+});
+
+// extends deleteProductReviewSchema
+export const updateProductReviewSchema = deleteProductReviewSchema.keys({
+  review: Joi.string().min(1).max(100).required(),
+  rating: Joi.number().min(1).max(5).required(),
 });
