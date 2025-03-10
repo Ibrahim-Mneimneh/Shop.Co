@@ -1,6 +1,10 @@
 import { NextFunction, Response } from "express";
 import { AuthRequest } from "../../middleware/authMiddleware";
-import { reviewProductSchema, updateProductReviewSchema } from "../../types/userControllerTypes";
+import {
+  deleteProductReviewSchema,
+  reviewProductSchema,
+  updateProductReviewSchema,
+} from "../../types/userControllerTypes";
 import { HttpError } from "../../utils/customErrors";
 import { UserModel } from "../../models/userModel";
 import { ProductVariantModel } from "../../models/product/productVariantModel";
@@ -127,7 +131,7 @@ export const updateProductReview = async (
       "product"
     );
     if (!variantData) {
-      throw new HttpError("Product not found", 404);
+      throw new HttpError("Product not available", 404);
     }
     const ratingData = await RatingModel.findOne({
       product: variantData.product,
@@ -169,7 +173,11 @@ export const updateProductReview = async (
         _id: variantData.product,
         status: "Active",
       },
-      { rating: updatedRating.rating, totalReviews: updatedRating.totalReviews }
+      {
+        rating: updatedRating.rating,
+        totalReviews: updatedRating.totalReviews,
+      },
+      { session }
     );
     if (updateVariant.modifiedCount === 0) {
       throw new HttpError(
@@ -183,3 +191,80 @@ export const updateProductReview = async (
   }
 };
 
+export const deleteProductReview = async (
+  req: DbSessionRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const session = req.dbSession;
+    const { userId } = req;
+    const { error, value } = deleteProductReviewSchema.validate({
+      variantId: req.params.variantId,
+      reviewId: req.params.reviewId,
+    });
+    if (error) {
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
+    }
+    const { variantId, reviewId } = value;
+    const variantData = await ProductVariantModel.findOne(
+      { _id: variantId, status: "Active" },
+      "product"
+    );
+    if (!variantData) {
+      throw new HttpError("Product not available", 404);
+    }
+    // get the old rating and calculate the new rating
+    const ratingData = await RatingModel.findOne({
+      product: variantData.product,
+      reviews: { $elemMatch: { user: userId, _id: reviewId } },
+    }).select({
+      __v: 1,
+      rating: 1,
+      totalReviews: 1,
+      reviews: { $elemMatch: { user: userId } },
+    });
+    if (!ratingData) {
+      throw new HttpError("Review not found", 404);
+    }
+    const { reviews, __v, totalReviews, rating: oldAverRating } = ratingData;
+    const userRating = reviews[0].rating;
+    const newRating =
+      (oldAverRating * totalReviews - userRating) / (totalReviews - 1);
+    const updatedRating = await RatingModel.findOneAndUpdate(
+      { product: variantData.product, __v },
+      {
+        $pull: { reviews: { user: userId, _id: reviewId } },
+        $inc: { totalReviews: -1 },
+        rating: newRating,
+      },
+      { new: true, session, projection: { _id: 1, rating: 1, totalReviews: 1 } }
+    );
+    if (!updatedRating) {
+      throw new HttpError("Failed to delete review", 400);
+    }
+    const updateVariant = await ProductModel.updateOne(
+      {
+        _id: variantData.product,
+        status: "Active",
+      },
+      {
+        rating: updatedRating.rating,
+        totalReviews: updatedRating.totalReviews,
+      },
+      { session }
+    );
+    if (updateVariant.modifiedCount === 0) {
+      throw new HttpError(
+        "Failed to delete review. Product is in-active at the time",
+        400
+      );
+    }
+    res.status(200).json({ message: "Review deleted sucessfully" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
