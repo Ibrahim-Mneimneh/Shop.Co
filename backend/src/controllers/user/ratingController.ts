@@ -53,26 +53,22 @@ export const reviewProduct = async (
       throw new HttpError("Product not found", 404);
     }
     // Fetch the order ensure the variantId is included & the isRated is false
-    const orderedProduct = await OrderModel.find({
-      _id: orderId,
-      products: { $elemMatch: { variant: variantId, isRated: false } },
-    });
+    const orderedProduct = await OrderModel.findOne(
+      {
+        _id: orderId,
+        "products.variant": variantId,
+      },
+      { "products.$": 1 }
+    );
 
-    if (!orderedProduct) {
-      res
-        .status(404)
-        .json({ message: "Order doesn't contain the selected product" });
+    if (!orderedProduct || orderedProduct.products[0].isRated) {
+      const message = !orderedProduct
+        ? "Order doesn't contain the selected product"
+        : "Product already reviewed";
+      res.status(404).json({ message });
       return;
     }
     const { product } = isActive;
-    const hasReviewed = await RatingModel.exists({
-      product,
-      reviews: { $elemMatch: { user: userId } },
-    });
-
-    if (hasReviewed) {
-      throw new HttpError("Product already reviewed", 400);
-    }
     const ratingData = await RatingModel.findOne({ product }, "-reviews");
     if (!ratingData) {
       throw new HttpError("Product review unavailable", 404);
