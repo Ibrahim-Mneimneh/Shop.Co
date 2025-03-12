@@ -15,13 +15,13 @@ import { ProductModel } from "../../models/product/productModel";
 
 // Rate a product (after purchase)
 export const reviewProduct = async (
-  req: AuthRequest,
+  req: DbSessionRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
     // get the userId from token / orderId & variantId / rating through the body
-    const { userId } = req;
+    const { userId, dbSession: session } = req;
     const { error, value } = reviewProductSchema.validate({
       variantId: req.params.variantId,
       orderId: req.params.orderId,
@@ -90,9 +90,18 @@ export const reviewProduct = async (
         $inc: { totalReviews: 1 },
         $set: { rating: newRating },
       },
-      { new: true, projection: "-reviews" }
+      { new: true, session, projection: "-reviews" }
     );
     if (!updatedRating) {
+      throw new HttpError("Product review failed", 400);
+    }
+    // Update isRated
+    const updatedOrder = await OrderModel.updateOne(
+      { orderId, "products.variant": variantId },
+      { $set: { "products.$.isRated": true } },
+      { session}
+    );
+    if(updatedOrder.modifiedCount===0){
       throw new HttpError("Product review failed", 400);
     }
     res.status(200).json({ message: "Review sent successfully" });
