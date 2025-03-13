@@ -56,15 +56,31 @@ export const reviewProduct = async (
     const orderedProduct = await OrderModel.findOne(
       {
         _id: orderId,
+        user: userId,
         "products.variant": variantId,
       },
-      { "products.$": 1 }
+      { "products.$": 1, paymentStatus: 1, deliveryStatus: 1 }
     );
-
-    if (!orderedProduct || orderedProduct.products[0].isRated) {
-      const message = !orderedProduct
+    if (
+      !orderedProduct ||
+      orderedProduct.products[0].isRated ||
+      orderedProduct.paymentStatus !== "Complete" ||
+      orderedProduct.deliveryStatus === "In-delivery"
+    ) {
+      let message = !orderedProduct
         ? "Order doesn't contain the selected product"
         : "Product already reviewed";
+      if (!orderedProduct) {
+        message = "Order doesn't contain the selected product";
+      } else {
+        if (orderedProduct.products[0].isRated) {
+          message = "Product already reviewed";
+        } else if (orderedProduct.deliveryStatus === "In-delivery") {
+          message = "Product review failed, product still in delivery";
+        } else if (orderedProduct.paymentStatus !== "Complete") {
+          message = "Product review failed, order's payment not processed yet";
+        }
+      }
       res.status(404).json({ message });
       return;
     }
@@ -97,12 +113,12 @@ export const reviewProduct = async (
     }
     // Update isRated
     const updatedOrder = await OrderModel.updateOne(
-      { orderId, "products.variant": variantId },
+      { _id:orderId, "products.variant": variantId },
       { $set: { "products.$.isRated": true } },
-      { session}
+      { session }
     );
-    if(updatedOrder.modifiedCount===0){
-      throw new HttpError("Product review failed", 400);
+    if (updatedOrder.modifiedCount === 0) {
+      throw new HttpError("Product review failed here", 400);
     }
     res.status(200).json({ message: "Review sent successfully" });
   } catch (error: any) {
