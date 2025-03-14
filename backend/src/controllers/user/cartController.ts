@@ -1,4 +1,4 @@
-import { Response, RequestHandler, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 
 import { AuthRequest } from "../../middleware/authMiddleware";
 import { CartModel, ICart } from "../../models/cartModel";
@@ -8,14 +8,12 @@ import {
   updateCartQuantitySchema,
 } from "../../types/cartControllerTypes";
 import {
-  IProductVariant,
   ProductVariantModel,
 } from "../../models/product/productVariantModel";
-import { IOrderQuantity } from "../../types/modalTypes";
 import { HttpError } from "../../utils/customErrors";
 
 // get Cart
-export const getCart: RequestHandler = async (
+export const getCart = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -54,14 +52,14 @@ export const getCart: RequestHandler = async (
 };
 
 // Add item to cart
-export const addToCart: RequestHandler = async (
+export const addToCart = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const cartId = req.cartId;
-    // get the variantId, quantity size, color ** define Joi
+    // get the variantId, quantity size, color
     const { error, value } = addToCartSchema.validate(req.body);
     if (error) {
       throw new HttpError(
@@ -180,7 +178,7 @@ export const addToCart: RequestHandler = async (
 };
 
 // Update existing items (increase/decrease quantity)
-export const updateProductCartQuantity: RequestHandler = async (
+export const updateProductCartQuantity = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -213,7 +211,6 @@ export const updateProductCartQuantity: RequestHandler = async (
         : "Requested size isn't available";
       throw new HttpError(message, 404);
     }
-    const quantityLeft = variantData.quantity[0].quantityLeft;
 
     if (
       variantData.stockStatus === "Out of Stock" ||
@@ -295,7 +292,7 @@ export const updateProductCartQuantity: RequestHandler = async (
   }
 };
 
-export const deleteCartProduct: RequestHandler = async (
+export const deleteCartProduct = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction

@@ -1,4 +1,4 @@
-import { NextFunction, Request, RequestHandler, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 
 import { UserModel } from "../../models/userModel";
@@ -15,7 +15,7 @@ import { isMoreThanWeekOld } from "../../utils/isValidFunctions";
 import { HttpError } from "../../utils/customErrors";
 
 // Admin login
-export const adminLogin: RequestHandler = async (
+export const adminLogin = async (
   req: Request,
   res: Response,
   next: NextFunction

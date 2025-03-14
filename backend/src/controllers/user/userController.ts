@@ -1,4 +1,4 @@
-import { Request, Response, RequestHandler, NextFunction } from "express";
+import { Request, Response,  NextFunction } from "express";
 import bcrypt from "bcryptjs";
 
 import { UserModel } from "../../models/userModel";
@@ -20,7 +20,7 @@ import {
 import { jwtGenerator } from "../../utils/jwtGenerator";
 import { HttpError } from "../../utils/customErrors";
 
-export const registerUser: RequestHandler = async (
+export const registerUser = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -71,7 +71,7 @@ export const registerUser: RequestHandler = async (
   }
 };
 
-export const loginUser: RequestHandler = async (
+export const loginUser = async (
   req: Request,
   res: Response,
   next: NextFunction

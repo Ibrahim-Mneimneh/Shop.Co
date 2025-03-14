@@ -1,4 +1,4 @@
-import { NextFunction, Request, RequestHandler, Response } from "express";
+import { NextFunction, Response } from "express";
 import { AuthRequest } from "../../../middleware/authMiddleware";
 import {
   addProductSchema,
@@ -26,7 +26,7 @@ import { RatingModel } from "../../../models/product/ratingModel";
 import { HttpError } from "../../../utils/customErrors";
 
 // Upload Product Images
-export const addProductImage: RequestHandler = async (
+export const addProductImage= async (
   req: DbSessionRequest,
   res: Response,
   next: NextFunction
@@ -91,7 +91,7 @@ export const addProductImage: RequestHandler = async (
 };
 
 // Add a product
-export const addProduct: RequestHandler = async (
+export const addProduct = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction

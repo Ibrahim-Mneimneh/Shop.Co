@@ -1,4 +1,4 @@
-import { NextFunction, Request, RequestHandler, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { PipelineStage } from "mongoose";
 
 import { ProductModel } from "../../models/product/productModel";
@@ -12,7 +12,7 @@ import { RatingModel } from "../../models/product/ratingModel";
 import { HttpError } from "../../utils/customErrors";
 import { validIdSchema } from "../../types/productTypes";
 
-export const getImage: RequestHandler = async (
+export const getImage = async (
   req: Request,
   res: Response,
   next: NextFunction
