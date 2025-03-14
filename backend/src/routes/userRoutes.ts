@@ -16,6 +16,7 @@ import {
   updateProductCartQuantity,
 } from "../controllers/user/cartController";
 import { deleteProductReview, reviewProduct, updateProductReview } from "../controllers/user/ratingController";
+import { sessionMiddleware } from "../middleware/sessionMiddleware";
 
 const router: Router = express.Router();
 
@@ -38,13 +39,13 @@ router.delete("/cart/products/:variantId", deleteCartProduct);
 // Order
 router.get("/orders", getOrders);
 router.get("/orders/:orderId", getOrder);
-router.post("/cart/order", orderProduct); 
-router.post("/orders/payment", confirmPayment); // Confirm Payment (for testing now)
+router.post("/cart/order", sessionMiddleware, orderProduct); 
+router.post("/orders/payment", sessionMiddleware, confirmPayment); // Confirm Payment (for testing now)
 
 // Product Review
-router.post("/variants/:variantId/orders/:orderId",reviewProduct)
-router.patch("/variants/:variantId/reviews/:reviewId",updateProductReview)
-router.delete("/variants/:variantId/reviews/:reviewId", deleteProductReview);
+router.post("/variants/:variantId/orders/:orderId",sessionMiddleware,reviewProduct)
+router.patch("/variants/:variantId/reviews/:reviewId",sessionMiddleware,updateProductReview)
+router.delete("/variants/:variantId/reviews/:reviewId", sessionMiddleware,deleteProductReview);
 export const userRouter: Router = router;
 
 /**
