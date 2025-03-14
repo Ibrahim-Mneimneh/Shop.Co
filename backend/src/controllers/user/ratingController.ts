@@ -90,7 +90,8 @@ export const reviewProduct = async (
       throw new HttpError("Product review unavailable", 404);
     }
     const { _id, rating: oldRating, totalReviews, __v } = ratingData;
-    const newRating = (totalReviews * oldRating + rating) / (totalReviews + 1);
+    let newRating = (totalReviews * oldRating + rating) / (totalReviews + 1);
+    newRating = parseFloat(newRating.toFixed(2));
     // update totalReviews, rating and add review
     const updatedRating = await RatingModel.findOneAndUpdate(
       { _id, __v },
@@ -113,7 +114,7 @@ export const reviewProduct = async (
     }
     // Update isRated
     const updatedOrder = await OrderModel.updateOne(
-      { _id:orderId, "products.variant": variantId },
+      { _id: orderId, "products.variant": variantId },
       { $set: { "products.$.isRated": true } },
       { session }
     );
@@ -168,8 +169,10 @@ export const updateProductReview = async (
     }
     const { reviews, __v, totalReviews, rating: oldAverRating } = ratingData;
     const oldRating = reviews[0].rating;
-    const newRating =
+    let newRating =
       (oldAverRating * totalReviews - oldRating + rating) / totalReviews;
+    newRating = parseFloat(newRating.toFixed(2));
+
     // update review
     const updatedRating = await RatingModel.findOneAndUpdate(
       {
@@ -253,8 +256,10 @@ export const deleteProductReview = async (
     }
     const { reviews, __v, totalReviews, rating: oldAverRating } = ratingData;
     const userRating = reviews[0].rating;
-    const newRating =
+    let newRating =
       (oldAverRating * totalReviews - userRating) / (totalReviews - 1);
+    newRating = parseFloat(newRating.toFixed(2));
+
     const updatedRating = await RatingModel.findOneAndUpdate(
       { product: variantData.product, __v },
       {
