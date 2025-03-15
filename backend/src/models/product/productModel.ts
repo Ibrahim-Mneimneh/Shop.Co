@@ -25,12 +25,7 @@ export interface IProductModel extends Model<IProduct> {
     productId: IObjectId,
     variantIds: IObjectId[],
     session: ClientSession
-  ): Promise<{ success: boolean; errorMessage: string }>;
-  getVariants(
-    productId: IObjectId,
-    status: "Active" | "Inactive",
-    match: { $ne: IObjectId } | { status: "Active" | "Inactive" }
-  ): Promise<{ success: boolean; errorMessage: string; product?: IProduct }>;
+  ): Promise<{ success: boolean; errorMessage: string }>
 }
 
 const productSchema = new Schema<IProduct>(
@@ -107,35 +102,6 @@ productSchema.statics.removeExpiry = async function (
   } catch (error: any) {
     console.log("remove expiry - " + error);
     throw new Error("Error removing expirey: " + error.message);
-  }
-};
-
-productSchema.statics.getVariants = async function (
-  productId: IObjectId,
-  status: "Active" | "Inactive",
-  match: { $ne: IObjectId } | { status: "Active" | "Inactive" } | {}
-): Promise<{
-  success: boolean;
-  errorMessage: string;
-  product?: IProduct;
-}> {
-  try {
-    const product = await this.findOne({ _id: productId, status }).populate({
-      path: "variants",
-      match,
-    });
-    if (!product) {
-      return { success: false, errorMessage: "Product not found" };
-    }
-    if (product.variants.length===0) {
-      return {
-        success: false,
-        errorMessage: "Product isn't available at the time",
-      };
-    }
-    return { success: true, errorMessage: "", product };
-  } catch (error: any) {
-    throw new Error(error.message);
   }
 };
 
