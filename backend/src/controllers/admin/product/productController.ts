@@ -6,6 +6,7 @@ import {
   deleteProductQuerySchema,
   reActivateProductSchema,
   updateQuantitySchema,
+  validIdSchema,
 } from "../../../types/productTypes";
 import { ProductModel } from "../../../models/product/productModel";
 import { DbSessionRequest } from "../../../middleware/sessionMiddleware";
@@ -24,9 +25,10 @@ import { IIsValidBase64, isValidBase64 } from "../../../utils/isValidFunctions";
 import { ProductImageModel } from "../../../models/product/productImageModel";
 import { RatingModel } from "../../../models/product/ratingModel";
 import { HttpError } from "../../../utils/customErrors";
+import { productIdSchema } from "../../../types/publicControllerTypes";
 
 // Upload Product Images
-export const addProductImage= async (
+export const addProductImage = async (
   req: DbSessionRequest,
   res: Response,
   next: NextFunction
@@ -190,6 +192,67 @@ export const addProductVariant = async (
     // Create ratingModel
     await RatingModel.create({ product: productId });
     res.status(200).json({ message: "Product variants added successfully" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+// View product & its variants
+export const getVariant = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // get id from params
+    const { error, value } = validIdSchema.validate(req.params.variantId);
+    if (error) {
+      throw new HttpError(
+        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
+        400
+      );
+    }
+    const variantId = value;
+    const variantData = await ProductVariantModel.findOne({
+      _id: variantId,
+    });
+    if (!variantData) {
+      throw new HttpError("Product not found", 404);
+    }
+    // get other variants and their images
+    const productData = await ProductModel.findById(
+      variantData.product
+    ).populate({
+      path: "variants",
+      match: { _id: { $ne: variantId } },
+      options: { limit: 1 },
+      select: "_id images",
+    });
+    if (!productData) {
+      throw new HttpError("Product not found", 404);
+    }
+    const ratingData = await RatingModel.findOne( // TODO: Change this approach
+      { product: variantData.product },
+      {
+        reviews: {
+          $slice: -5,
+        },
+      }
+    );
+    if (!ratingData) {
+      throw new HttpError("Failed to get product review", 404);
+    }
+    // Remove userId from reviews
+    const reviews = ratingData
+      .toJSON()
+      .reviews.map(({ user, ...rest }) => rest);
+
+    const filteredProductData = productData.toJSON();
+    const filteredVariantData = variantData.toJSON();
+    res.status(200).json({
+      message: "Product details available",
+      data: { ...filteredProductData, ...filteredVariantData, reviews },
+    });
   } catch (error: any) {
     return next(error);
   }

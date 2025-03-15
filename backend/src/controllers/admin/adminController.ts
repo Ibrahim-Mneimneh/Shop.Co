@@ -5,9 +5,7 @@ import { UserModel } from "../../models/userModel";
 import { IObjectId } from "../../types/modalTypes";
 import { AuthRequest } from "../../middleware/authMiddleware";
 
-import { ProductModel } from "../../models/product/productModel";
 import { updateDeliveryStatusSchema } from "../../types/productTypes";
-import { productIdSchema } from "../../types/publicControllerTypes";
 import { loginSchema } from "../../types/userControllerTypes";
 import { OrderModel } from "../../models/orderModel";
 import { jwtGenerator } from "../../utils/jwtGenerator";
@@ -54,42 +52,7 @@ export const adminLogin = async (
   }
 };
 
-// View product & its variants
-export const getProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    // get id from params
-    const { error, value } = productIdSchema.validate({
-      productId: req.params.productId,
-    });
-    if (error) {
-      throw new HttpError(
-        "Validation failed: " + error.details[0].message.replace(/\"/g, ""),
-        400
-      );
-    }
-    // fetch for the product & variants
-    const productDetails = await ProductModel.getVariants(
-      value.productId,
-      "Active",
-      { status: "Active" }
-    );
-    if (productDetails.success && productDetails.product) {
-      const product = productDetails.product;
-      res.status(200).json({
-        message: "Product details loaded successfully",
-        data: product,
-      });
-      return;
-    }
-    throw new HttpError(productDetails.errorMessage, 400);
-  } catch (error: any) {
-    return next(error);
-  }
-};
+
 export const updateDeliveryStatus = async (
   req: AuthRequest,
   res: Response,
